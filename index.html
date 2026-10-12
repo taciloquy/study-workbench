@@ -1,0 +1,2289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>成长任务工作台</title>
+<style>
+/* ========== 全局基础（简约清爽现代风） ========== */
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root{
+  --bg:#F4F6FA;      /* 页面背景 */
+  --card:#FFFFFF;    /* 卡片背景 */
+  --ink:#242B45;     /* 主文字 */
+  --sub:#8A90A8;     /* 次要文字 */
+  --line:#E9EDF4;    /* 分隔线 */
+  --green:#2FC97A;   /* 成功/完成 */
+  --orange:#FF9F43;  /* 半完成 */
+  --red:#FF5C5C;     /* 未完成 */
+  --primary:#6C8CFF; /* 主题蓝紫 */
+  --radius:22px;
+}
+html,body{ height:100%; }
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  background:var(--bg);
+  color:var(--ink);
+  line-height:1.5;
+  font-size:16px;
+  /* 顶部柔和渐变光晕装饰 */
+  background-image:radial-gradient(circle at 15% -5%, rgba(108,140,255,.10), transparent 40%),
+                   radial-gradient(circle at 90% -5%, rgba(155,93,229,.10), transparent 40%);
+  background-attachment:fixed;
+}
+/* 页面容器：手机与电脑自适应（最大宽 560px 居中） */
+.app{ max-width:560px; margin:0 auto; padding:16px 14px 110px; }
+
+/* ========== 顶部标题栏 ========== */
+.topbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.brand{ display:flex; align-items:center; gap:10px; }
+.brand .logo{
+  width:42px; height:42px; border-radius:14px; flex:0 0 auto;
+  background:linear-gradient(135deg,#6C8CFF,#9B5DE5);
+  display:flex; align-items:center; justify-content:center; font-size:22px;
+  box-shadow:0 4px 14px rgba(108,140,255,.35);
+}
+.brand h1{ font-size:20px; font-weight:800; letter-spacing:.5px; line-height:1.2; }
+.brand .sub{ font-size:11px; color:var(--sub); font-weight:600; }
+
+/* ========== 通用按钮 ========== */
+.btn{
+  border:none; cursor:pointer; border-radius:16px; padding:12px 18px;
+  font-size:15px; font-weight:700; color:#fff; min-height:44px;
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  transition:transform .12s ease, opacity .15s;
+}
+.btn:active{ transform:scale(.95); }
+.btn-primary{ background:linear-gradient(135deg,#6C8CFF,#7F6CFF); box-shadow:0 4px 14px rgba(108,140,255,.30); }
+.btn-soft{ background:#fff; color:var(--ink); border:1.5px solid var(--line); }
+.btn-green{ background:var(--green); }
+.btn-danger{ background:var(--red); }
+.btn-sm{ padding:8px 14px; min-height:40px; font-size:14px; }
+.btn-icon{ width:44px; height:44px; padding:0; border-radius:14px; }
+
+/* ========== 页面切换 Tab ========== */
+.tabbar{
+  position:fixed; left:50%; transform:translateX(-50%); bottom:0; width:100%; max-width:560px;
+  display:flex; background:rgba(255,255,255,.92); backdrop-filter:blur(10px);
+  border-top:1px solid var(--line); padding:8px 16px calc(8px + env(safe-area-inset-bottom));
+  z-index:50; box-shadow:0 -4px 24px rgba(36,43,69,.06);
+}
+.tab{
+  flex:1; min-height:52px; border:none; background:transparent; cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+  font-size:12px; color:var(--sub); font-weight:600;
+}
+.tab .ico{ font-size:22px; line-height:1; }
+.tab.active{ color:var(--primary); }
+
+/* ========== 今日视图：日期条 ========== */
+.date-strip{
+  display:flex; gap:8px; overflow-x:auto; padding:6px 2px 12px; -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+}
+/* 预打卡提示条 */
+.precheck-bar{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:10px 12px; border-radius:12px; font-size:13px; font-weight:700; margin-bottom:12px;
+}
+.precheck-bar.future{ background:#EAF7FF; color:#0a6fb4; border:1px solid #bfe3f6; }
+.precheck-bar.past{ background:#F3F0FA; color:#7a5cc4; border:1px solid #ddd6f2; }
+.precheck-bar b{ }
+.precheck-bar .btn{ min-height:40px; }
+/* 考前复习标记 */
+.prep-badge{
+  display:inline-block; padding:5px 10px; border-radius:999px; margin-bottom:8px;
+  background:#EAF7FF; color:#0a6fb4; border:1px solid #bfe3f6; font-size:12px; font-weight:800;
+}
+.date-strip::-webkit-scrollbar{ display:none; }
+.date-cell{
+  flex:0 0 auto; width:52px; text-align:center; border-radius:16px; padding:8px 4px;
+  background:#fff; cursor:pointer; border:2px solid transparent; transition:all .15s;
+  box-shadow:0 1px 6px rgba(36,43,69,.04);
+}
+.date-cell .w{ font-size:11px; color:var(--sub); }
+.date-cell .d{ font-size:18px; font-weight:800; margin:2px 0; }
+.date-cell .m{ font-size:10px; color:var(--sub); }
+.date-cell.today{ border-color:var(--primary); background:#F1F3FF; }
+.date-cell.selected{ background:linear-gradient(135deg,#6C8CFF,#7F6CFF); color:#fff; border-color:transparent; }
+.date-cell.selected .w,.date-cell.selected .m{ color:rgba(255,255,255,.85); }
+.date-cell.done{ position:relative; }
+.date-cell.done::after{
+  content:'✓'; position:absolute; top:2px; right:6px; font-size:11px; font-weight:800; color:var(--green);
+}
+
+/* ========== 任务卡片 ========== */
+.task-card{
+  background:var(--card); border-radius:var(--radius); padding:16px 16px 14px;
+  margin-bottom:14px; box-shadow:0 4px 18px rgba(36,43,69,.06);
+  border:1px solid var(--line);
+  border-top:4px solid var(--accent,#ccc);
+  transition:transform .15s;
+}
+.task-card.anim-pop{ animation:pop .5s ease; }
+@keyframes pop{
+  0%{ transform:scale(1); box-shadow:0 0 0 0 var(--accent); }
+  30%{ transform:scale(1.02); box-shadow:0 0 0 6px color-mix(in srgb, var(--accent) 25%, transparent); }
+  100%{ transform:scale(1); box-shadow:0 4px 18px rgba(36,43,69,.06); }
+}
+.task-head{ display:flex; align-items:flex-start; gap:10px; }
+.task-emoji{ font-size:30px; line-height:1; }
+.task-title{ font-size:17px; font-weight:800; flex:1; }
+.task-tags{ display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; }
+.tag{
+  font-size:11px; font-weight:700; padding:3px 10px; border-radius:20px;
+  background:var(--bg); color:var(--sub);
+}
+.tag-type{ color:#fff; }
+.tag-type.daily{ background:#7F6CFF; }
+.tag-type.weekly{ background:#FF9F43; }
+
+/* 任务排序按钮（上移/下移，调整今日任务排列位置） */
+.card-order{ display:flex; flex-direction:column; gap:4px; margin-left:6px; }
+.order-btn{
+  width:32px; height:30px; border:none; border-radius:9px; cursor:pointer;
+  background:var(--bg); color:var(--sub); font-size:14px; font-weight:800; line-height:1;
+  display:flex; align-items:center; justify-content:center; transition:background .15s,color .15s;
+}
+.order-btn:hover{ background:#E4E7F2; color:var(--ink); }
+.order-btn:active{ transform:scale(.94); }
+
+/* 周目标进度条 */
+.weekly-progress{ margin-top:12px; }
+.weekly-bar{ height:10px; border-radius:6px; background:var(--bg); overflow:hidden; }
+.weekly-bar i{ display:block; height:100%; border-radius:6px; background:var(--accent,#6C8CFF); transition:width .3s; }
+.weekly-hint{ font-size:13px; color:var(--sub); margin-top:6px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.weekly-hint .skip{ font-size:12px; color:var(--primary); font-weight:700; background:none; border:none; cursor:pointer; text-decoration:underline; }
+
+/* 每日任务完成标记 */
+.daily-done{
+  display:inline-flex; align-items:center; gap:6px; color:var(--green);
+  font-size:14px; font-weight:800; margin-top:10px;
+}
+
+/* ========== 空状态 ========== */
+.empty{ text-align:center; padding:50px 20px; color:var(--sub); }
+.empty .e{ font-size:48px; margin-bottom:10px; }
+
+/* ========== 周统计视图 ========== */
+.week-nav{ display:flex; align-items:center; justify-content:space-between; margin:6px 0 14px; }
+.week-nav .mid{ font-size:16px; font-weight:800; }
+
+.grid-cal{ background:var(--card); border-radius:var(--radius); padding:14px; box-shadow:0 4px 18px rgba(36,43,69,.06); border:1px solid var(--line); }
+.grid-head,.grid-row{ display:grid; grid-template-columns:64px repeat(7,1fr); gap:6px; align-items:center; }
+.grid-head{ color:var(--sub); font-size:11px; font-weight:700; text-align:center; margin-bottom:8px; }
+.grid-row{ margin-bottom:8px; }
+.grid-row:last-child{ margin-bottom:0; }
+.grid-task{ font-size:12px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:4px; }
+.cell{
+  height:46px; border-radius:10px; background:var(--bg); display:flex; align-items:center;
+  justify-content:center; font-size:15px; position:relative;
+}
+.cell.g1{ background:#FFF3CD; }   /* 半星 */
+.cell.g2{ background:#C9F0DC; }   /* 整星 */
+.cell.none{ opacity:.4; }
+.cell small{ position:absolute; bottom:1px; right:3px; font-size:8px; color:var(--sub); }
+
+/* ========== 周复盘报告卡 ========== */
+.review-card{
+  background:var(--card); border-radius:var(--radius); padding:18px; margin-bottom:16px;
+  box-shadow:0 4px 18px rgba(36,43,69,.06); border:1px solid var(--line);
+}
+.review-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:14px; }
+.review-title{ font-size:17px; font-weight:800; }
+.review-date{ font-size:12px; color:var(--sub); margin-top:2px; }
+.review-stats{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.review-stat{ background:var(--bg); border-radius:14px; padding:12px 14px; }
+.review-stat .k{ font-size:11px; color:var(--sub); font-weight:600; }
+.review-stat .v{ font-size:22px; font-weight:800; margin-top:2px; }
+.review-stat .v.stars{ color:#FFB800; }
+.review-stat .s{ font-size:11px; color:var(--sub); margin-top:1px; }
+.review-detail{ margin-top:14px; }
+.review-detail .dtitle{ font-size:13px; font-weight:700; color:var(--sub); margin-bottom:8px; }
+.detail-item{
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  padding:9px 12px; background:var(--bg); border-radius:12px; margin-bottom:6px;
+}
+.detail-item .n{ font-size:14px; font-weight:700; }
+.detail-item .c{ font-size:12px; color:var(--sub); font-weight:700; }
+.detail-item.ok .c{ color:var(--green); }
+
+/* ========== 历史复盘 ========== */
+.review-history{ margin-top:6px; }
+.history-title{ font-size:16px; font-weight:800; margin:18px 0 10px; }
+.history-item{
+  display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+  background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin-bottom:8px;
+}
+.history-item .hi-title{ font-size:14px; font-weight:800; }
+.history-item .hi-meta{ font-size:12px; color:var(--sub); margin-top:2px; }
+
+/* ========== 古诗文背默抽签 ========== */
+.poem-date{ font-size:13px; color:var(--sub); font-weight:600; margin-bottom:12px; text-align:center; }
+.poem-card{
+  border:1px solid var(--line); border-radius:16px; padding:14px; margin-bottom:12px; background:var(--bg);
+}
+.poem-head{ display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+.poem-num{ font-size:12px; font-weight:800; color:var(--primary); background:#F1F3FF; border-radius:20px; padding:2px 8px; }
+.poem-title{ font-size:16px; font-weight:800; }
+.poem-meta{ font-size:12px; color:var(--sub); }
+.poem-lvl{ font-size:11px; color:var(--sub); background:#fff; border:1px solid var(--line); padding:1px 8px; border-radius:20px; margin-left:auto; }
+.poem-text{
+  font-size:16px; line-height:1.9; color:var(--ink); letter-spacing:.5px;
+  transition:opacity .2s, visibility .2s; user-select:text;
+}
+.poem-text.metered{ text-align:center; line-height:2.1; }  /* 五/七言按句居中分行 */
+.poem-meta-line{ font-size:12px; color:var(--sub); font-weight:600; margin-bottom:6px; }
+.poem-text.hidden{ opacity:0; visibility:hidden; }  /* 遮住再默：原文与朝代·作者彻底隐藏（保留占位） */
+.poem-ctrl{ margin-top:10px; display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap; }
+.done-one.active{ border-color:var(--green); background:#EFFAF4; color:var(--green); }
+.master-one{ border-color:#D9D9D9; background:#F4F4F4; color:#9A9A9A; transition:.2s; }
+.master-one.active{ border-color:#FFB800; background:#FFC53D; color:#1A1A1A; font-weight:800; box-shadow:0 2px 8px rgba(255,184,0,.45); }
+.poem-state{ font-size:11px; color:var(--sub); font-weight:600; margin-right:auto; }
+
+/* 背诵进度条 */
+.poem-prog{
+  margin-bottom:12px; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px;
+}
+.pp-row{ font-size:13px; font-weight:800; display:flex; justify-content:space-between; }
+.pp-bar{ height:8px; border-radius:5px; background:var(--bg); margin:8px 0; overflow:hidden; }
+.pp-bar i{ display:block; height:100%; background:linear-gradient(90deg,#2FC97A,#FFB800); transition:width .3s; }
+.pp-stats{ font-size:12px; color:var(--sub); display:flex; gap:12px; }
+.pp-stats b{ color:var(--ink); }
+.pp-stats .g{ color:var(--green); }
+.pp-stats .y{ color:#C77B00; }
+.pp-stats .r{ color:var(--red); }
+/* 已掌握诗词展开列表 */
+.pp-master{ margin-top:10px; border-top:1px dashed var(--line); padding-top:8px; }
+.pp-master-head{ display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--sub); cursor:pointer; font-weight:700; user-select:none; }
+.pp-master-head b{ color:#C77B00; }
+.pp-master-head .arr{ color:#C77B00; }
+.pp-master-list{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.master-chip{ font-size:12px; padding:5px 10px; border-radius:999px; border:1px solid #FFD36E; background:#FFF6E0; color:#8a5a00; cursor:pointer; transition:.15s; }
+.master-chip:hover{ background:#FFE9AE; }
+.skip-one{ border-color:#D9D9D9; background:#F4F4F4; color:#9A9A9A; transition:.2s; }
+.skip-one.active{ border-color:var(--orange); background:#FFEBD9; color:#C75B00; font-weight:800; }
+.skip-chip{ font-size:12px; padding:5px 10px; border-radius:999px; border:1px solid #F0A24A; background:#FFEBD9; color:#8a5200; cursor:pointer; transition:.15s; }
+.skip-chip:hover{ background:#FFD9B5; }
+.poem-note{ font-size:12px; color:var(--sub); text-align:center; margin-top:10px; }
+.poem-curve{
+  font-size:11px; color:var(--sub); text-align:center; margin-bottom:12px;
+  background:var(--bg); border-radius:12px; padding:6px 10px;
+}
+
+/* ========== 弹窗 / 面板 ========== */
+.mask{
+  position:fixed; inset:0; background:rgba(30,34,60,.45); z-index:100;
+  display:none; align-items:flex-end; justify-content:center;
+  backdrop-filter:blur(2px);
+}
+.mask.show{ display:flex; }
+.sheet{
+  background:#fff; width:100%; max-width:560px; border-radius:26px 26px 0 0; padding:20px 20px 28px;
+  animation:slideUp .25s ease; max-height:85vh; overflow-y:auto;
+}
+.sheet-full{ max-height:92vh; }
+@keyframes slideUp{ from{ transform:translateY(40px); opacity:0; } to{ transform:none; opacity:1; } }
+.sheet h3{ font-size:19px; font-weight:800; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; }
+.sheet .close{ width:36px; height:36px; border-radius:50%; background:var(--bg); border:none; font-size:18px; cursor:pointer; }
+.field{ margin-bottom:14px; }
+.field label{ display:block; font-size:13px; font-weight:700; color:var(--sub); margin-bottom:6px; }
+.input, .select, textarea.input{
+  width:100%; min-height:48px; border:2px solid var(--line); border-radius:14px; padding:10px 14px;
+  font-size:16px; font-family:inherit; color:var(--ink); background:#fff;
+}
+.input:focus{ outline:none; border-color:var(--primary); }
+.seg{ display:flex; gap:8px; flex-wrap:wrap; }
+.seg-item{
+  flex:1; min-width:72px; min-height:44px; border:2px solid var(--line); border-radius:12px; background:#fff;
+  font-size:14px; font-weight:700; cursor:pointer; color:var(--sub); padding:0 6px;
+}
+.seg-item.active{ border-color:var(--primary); color:var(--primary); background:#F1F3FF; }
+/* 每日抽签数量步进器 */
+.poem-n-seg{ display:flex; align-items:center; gap:10px; }
+.poem-n-seg .seg-item{ flex:none; width:52px; min-width:52px; font-size:20px; line-height:1; }
+.poem-n-val{ min-width:44px; text-align:center; font-size:22px; font-weight:900; color:var(--ink); }
+.poem-n-hint{ font-size:13px; color:var(--sub); font-weight:600; }
+.sheet-actions{ display:flex; gap:10px; margin-top:18px; }
+.sheet-actions .btn{ flex:1; }
+
+/* 星星选择（打卡弹窗内） */
+.star-edit{ display:flex; justify-content:center; gap:8px; flex-wrap:wrap; }
+.star-opt{
+  min-width:64px; min-height:56px; border:2px solid var(--line); border-radius:14px; background:#fff;
+  cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  font-size:11px; color:var(--sub); font-weight:700; padding:6px;
+}
+.star-opt .s{ font-size:24px; }
+.star-opt.active{ border-color:var(--green); background:#EFFAF4; color:var(--ink); }
+
+/* ========== 设置面板：课程管理 ========== */
+.set-sec{ margin-bottom:22px; }
+.set-sec-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.set-sec-head .t{ font-size:16px; font-weight:800; }
+.subj-row{
+  display:flex; align-items:center; gap:12px; padding:12px 14px;
+  background:var(--bg); border-radius:14px; margin-bottom:8px;
+}
+.subj-row .se{ font-size:26px; line-height:1; }
+.subj-row .nm{ flex:1; font-size:15px; font-weight:700; }
+.subj-row .cnt{ font-size:12px; color:var(--sub); font-weight:600; }
+.color-dot{ width:14px; height:14px; border-radius:50%; flex:0 0 auto; border:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.06); }
+.icon-btn{
+  width:40px; height:40px; border-radius:12px; border:1.5px solid var(--line); background:#fff;
+  cursor:pointer; font-size:15px; color:var(--sub);
+}
+.icon-btn.danger{ color:var(--red); }
+
+/* 设置面板：任务分组管理 */
+.grp{ margin-bottom:14px; }
+.grp-head{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.grp-head .se{ font-size:18px; }
+.grp-head .nm{ font-size:14px; font-weight:800; flex:1; }
+.grp-head .add{
+  font-size:12px; font-weight:700; color:var(--primary); background:none; border:none; cursor:pointer;
+  padding:6px 8px; border-radius:10px;
+}
+.grp-head .add:active{ background:var(--bg); }
+.task-row{
+  display:flex; align-items:center; gap:10px; padding:11px 12px;
+  background:var(--bg); border-radius:12px; margin-bottom:6px;
+}
+.task-row .tn{ flex:1; font-size:14px; font-weight:700; }
+.task-row .tt{ font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px; color:#fff; }
+.task-row .tt.daily{ background:#7F6CFF; }
+.task-row .tt.weekly{ background:#FF9F43; }
+.task-row .icon-btn{ width:36px; height:36px; font-size:14px; }
+
+/* 色块单选 */
+.color-pick{ display:flex; gap:10px; flex-wrap:wrap; }
+.color-opt{
+  width:40px; height:40px; border-radius:50%; cursor:pointer; border:3px solid transparent;
+  transition:transform .12s;
+}
+.color-opt.active{ border-color:var(--ink); transform:scale(1.12); }
+
+/* 徽标 / toast */
+.toast{
+  position:fixed; left:50%; top:20%; transform:translateX(-50%); background:rgba(30,34,60,.9);
+  color:#fff; padding:12px 22px; border-radius:30px; font-size:15px; font-weight:600; z-index:200;
+  opacity:0; transition:opacity .25s; pointer-events:none; white-space:nowrap; box-shadow:0 6px 20px rgba(0,0,0,.15);
+}
+.toast.show{ opacity:1; }
+
+/* 桌面宽屏优化 */
+@media (min-width:640px){
+  .app{ padding-top:28px; }
+  .mask{ align-items:center; }
+  .sheet{ border-radius:26px; }
+}
+</style>
+</head>
+<body>
+
+<!-- 顶部标题栏 -->
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">🌱</div>
+      <div>
+        <h1 id="pageTitle">今日打卡</h1>
+        <div class="sub">成长任务工作台</div>
+      </div>
+    </div>
+    <div class="actions" style="display:flex;gap:8px">
+      <button class="btn btn-soft btn-icon" id="btnSettings" title="设置">⚙️</button>
+      <button class="btn btn-soft btn-icon" id="btnAdd" title="新增任务">＋</button>
+    </div>
+  </div>
+
+  <!-- 页面容器：今日视图 / 周统计视图 -->
+  <div id="viewToday">
+    <!-- 横向日期选择条 -->
+    <div class="date-strip" id="dateStrip"></div>
+    <!-- 预打卡提示条：选中非今天时提示，可一键回到今天 -->
+    <div id="precheckBar" style="display:none"></div>
+    <!-- 当日任务列表 -->
+    <div id="todayTasks"></div>
+  </div>
+
+  <div id="viewWeek" style="display:none">
+    <!-- 周导航（可翻看过往周） -->
+    <div class="week-nav">
+      <button class="btn btn-soft btn-icon" id="weekPrev">‹</button>
+      <div class="mid" id="weekLabel"></div>
+      <button class="btn btn-soft btn-icon" id="weekNext">›</button>
+    </div>
+    <!-- 本周学习复盘报告 -->
+    <div id="reviewCard"></div>
+    <!-- 7 列网格日历 -->
+    <div class="grid-cal" id="gridCal"></div>
+    <!-- 历史复盘 -->
+    <div class="review-history">
+      <div class="history-title">💾 历史复盘</div>
+      <div id="historyList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 底部 Tab 切换 -->
+<nav class="tabbar">
+  <button class="tab active" data-view="today"><span class="ico">📅</span>今日</button>
+  <button class="tab" data-view="week"><span class="ico">📊</span>周统计</button>
+</nav>
+
+<!-- ========== 设置面板（课程 + 任务管理） ========== -->
+<div class="mask" id="settingsMask">
+  <div class="sheet sheet-full">
+    <h3>⚙️ 设置 <button class="close" id="settingsClose">✕</button></h3>
+
+    <!-- 课程管理 -->
+    <div class="set-sec">
+      <div class="set-sec-head">
+        <span class="t">📚 课程管理</span>
+        <button class="btn btn-sm btn-primary" id="btnAddSubject">＋ 新增课程</button>
+      </div>
+      <div id="subjectList"></div>
+    </div>
+
+    <!-- 任务管理（按课程分组） -->
+    <div class="set-sec">
+      <div class="set-sec-head"><span class="t">🗂 任务管理</span></div>
+      <div id="subjectTasks"></div>
+    </div>
+
+    <!-- 本地存储说明（纯本地版，不依赖云同步） -->
+    <div class="set-sec">
+      <div class="set-sec-head"><span class="t">💾 数据存储</span></div>
+      <div class="sync-box">
+        <p class="sync-tip">本版为<b>纯本地版</b>：所有数据（课程、任务、打卡、古诗背诵）仅保存在<b>当前设备浏览器</b>里，不上传、不联网、不跨设备同步。请知悉：换设备或清理浏览器缓存，会清空该设备的数据。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 课程新增/编辑弹窗 -->
+<div class="mask" id="subjectMask">
+  <div class="sheet">
+    <h3 id="subjectModalTitle">新增课程 <button class="close" id="subjectClose">✕</button></h3>
+    <div class="field">
+      <label>课程名称</label>
+      <input class="input" id="s_name" placeholder="例如：英语" maxlength="10">
+    </div>
+    <div class="field">
+      <label>图标（emoji）</label>
+      <input class="input" id="s_emoji" placeholder="例如：📖" maxlength="4">
+    </div>
+    <div class="field">
+      <label>配色</label>
+      <div class="color-pick" id="s_color"></div>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn btn-danger" id="btnDeleteSubject" style="display:none">删除课程</button>
+      <button class="btn btn-primary" id="btnSaveSubject">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 任务新增/编辑弹窗 -->
+<div class="mask" id="taskMask">
+  <div class="sheet">
+    <h3 id="taskModalTitle">新增任务 <button class="close" id="taskClose">✕</button></h3>
+
+    <div class="field">
+      <label>任务名称</label>
+      <input class="input" id="f_name" placeholder="例如：英语单词背诵" maxlength="30">
+    </div>
+
+    <div class="field">
+      <label>课程</label>
+      <div class="seg" id="f_subject"></div>
+    </div>
+
+    <div class="field">
+      <label>任务类型</label>
+      <div class="seg" id="f_type">
+        <button class="seg-item" data-type="daily">每日任务</button>
+        <button class="seg-item" data-type="weekly">周目标任务</button>
+      </div>
+    </div>
+
+    <!-- 周目标次数（仅周目标任务显示） -->
+    <div class="field" id="f_weeklyBox" style="display:none">
+      <label>每周目标次数</label>
+      <input class="input" id="f_target" type="number" min="1" max="14" value="4" placeholder="每周完成几次">
+    </div>
+
+    <div class="field">
+      <label>打卡模式</label>
+      <div class="seg" id="f_poem">
+        <button class="seg-item" data-poem="1">📜 古诗文抽签背默</button>
+        <button class="seg-item" data-poem="0">普通打卡</button>
+      </div>
+    </div>
+
+    <!-- 背默学段（仅古诗文背默模式显示） -->
+    <div class="field" id="f_levelBox" style="display:none">
+      <label>背诵学段</label>
+      <div class="seg" id="f_level">
+        <button class="seg-item" data-level="全部">全部</button>
+        <button class="seg-item" data-level="小学">小学</button>
+        <button class="seg-item" data-level="初中">初中</button>
+      </div>
+    </div>
+
+    <!-- 考前复习安排（仅古诗文背默模式显示）：考前 N 天进入复习，抽已背过的诗回顾 -->
+    <div class="field" id="f_prepBox" style="display:none">
+      <label>考前复习安排</label>
+      <div class="seg" id="f_prep">
+        <button class="seg-item" data-prep="1">📚 开启考前复习</button>
+        <button class="seg-item" data-prep="0">不安排</button>
+      </div>
+      <div id="f_prepSub" style="display:none; margin-top:12px">
+        <label>考试日期</label>
+        <input class="input" id="f_examDate" type="date">
+        <label style="margin-top:10px; display:block">提前复习天数</label>
+        <input class="input" id="f_prepDays" type="number" min="1" max="14" value="7" placeholder="考前几天进入复习">
+        <div style="font-size:12px;color:var(--sub);margin-top:6px">复习期内每日抽签只从「已背过的诗」里抽取回顾，优先抽到期未复习的；新诗暂缓。</div>
+      </div>
+    </div>
+
+    <div class="sheet-actions">
+      <button class="btn btn-danger" id="btnDelete" style="display:none">删除</button>
+      <button class="btn btn-primary" id="btnSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 打卡星级选择弹窗 -->
+<div class="mask" id="starMask">
+  <div class="sheet">
+    <h3 id="starTitle">选择打卡星级 <button class="close" id="starClose">✕</button></h3>
+    <div class="star-edit" id="starOptions"></div>
+  </div>
+</div>
+
+<!-- 古诗文背默抽签弹窗 -->
+<div class="mask" id="poemMask">
+  <div class="sheet">
+    <h3>📜 古诗文背默抽签 <button class="close" id="poemClose">✕</button></h3>
+    <!-- 先选学段，再抽签 -->
+    <div class="field" style="margin-bottom:12px">
+      <label>先选择背诵学段</label>
+      <div class="seg" id="poemLevelSeg">
+        <button class="seg-item" data-level="全部">全部</button>
+        <button class="seg-item" data-level="小学">小学</button>
+        <button class="seg-item" data-level="初中">初中</button>
+      </div>
+    </div>
+    <!-- 每日抽签数量设置 -->
+    <div class="field" style="margin-bottom:10px">
+      <label>每日抽签篇数</label>
+      <div class="seg poem-n-seg">
+        <button class="seg-item poem-n-btn" id="poemNMinus">−</button>
+        <span class="poem-n-val" id="poemNVal">5</span>
+        <button class="seg-item poem-n-btn" id="poemNPlus">＋</button>
+        <span class="poem-n-hint">首 / 天</span>
+      </div>
+    </div>
+    <div class="poem-date" id="poemDate"></div>
+    <!-- 背诵进度概览 -->
+    <div class="poem-prog" id="poemProgress"></div>
+    <div class="poem-curve" id="poemCurve"></div>
+    <div id="poemList"></div>
+    <div class="poem-note">先看题目背默 → 点「👀 查看全文」核对 → 点「✔ 已背默」标记 → 完成后记星</div>
+    <div class="sheet-actions">
+      <button class="btn btn-primary" id="btnPoemDone">✔ 完成今日背默（记1星）</button>
+    </div>
+  </div>
+</div>
+
+<!-- 轻提示 -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   localStorage 存储结构
+   study_subjects_base : 课程(科目)配置数组
+     [{ id, name, emoji, color }]
+   study_plans_base : 任务配置数组
+     [{ id, name, subjectId, type: 'daily'|'weekly', target(周目标次数), emoji }]
+   study_records_base : 打卡记录对象
+     { 'YYYY-MM-DD': { taskId: star }, ... }
+   study_reviews_base : 已保存的周复盘快照
+   ============================================================ */
+const LS_SUBJECTS = 'study_subjects_base';
+const LS_PLANS = 'study_plans_base';
+const LS_RECORDS = 'study_records_base';
+const LS_REVIEWS = 'study_reviews_base';
+const LS_MEM_PREFIX = 'study_poem_mem_';  // 每首诗背诵记忆：study_poem_mem_{taskId} = { 标题: {stage,last} }
+const LS_SKIP_PREFIX = 'study_poem_skip_'; // 跳过的诗：study_poem_skip_{taskId} = { 诗题: true }
+
+/* 艾宾浩斯遗忘曲线复习间隔（单位：天）：背完第1~6次后，距下次复习的天数 */
+const REVIEW_DAYS = [1, 2, 4, 7, 15, 30];
+
+/* 预设柔和配色（新增课程可选） */
+const COLOR_PALETTE = ['#FF6B9D','#4ECDC4','#FFD166','#9B5DE5','#6C8CFF','#FF9F43','#2FC97A','#F0608C','#00B8D9','#79C9F2'];
+
+/* 初始内置课程 */
+const DEFAULT_SUBJECTS = [
+  { id:'en',   name:'英语', emoji:'📖', color:'#FF6B9D' },
+  { id:'math', name:'数学', emoji:'🔢', color:'#4ECDC4' },
+  { id:'cn',   name:'语文', emoji:'📝', color:'#FFD166' },
+  { id:'sc',   name:'理化', emoji:'⚗️', color:'#4ECDC4' },
+  { id:'other',name:'其他', emoji:'🎯', color:'#9B5DE5' },
+];
+
+/* 星级档位：值、文案、星星符号 */
+const STAR_LEVELS = [
+  { val:1,    label:'完整完成', sym:'⭐' },
+  { val:0.5,  label:'尽力/一半', sym:'🌓' },
+  { val:0.5,  label:'质量一般', sym:'🌗' },   // 与上面同为 0.5 星，文案区分
+  { val:0,    label:'未做', sym:'⚪' },
+];
+
+/* ============================================================
+   古诗文语料库（统编版小学+初中必背，内置离线可用）
+   字段：t=标题, a=作者, d=朝代, lvl=学段, txt=正文（长诗标“节选”）
+   ============================================================ */
+const POEMS = [
+  { t:'咏鹅', a:'骆宾王', d:'唐', lvl:'小学', txt:'鹅，鹅，鹅，曲项向天歌。白毛浮绿水，红掌拨清波。' },
+  { t:'江南', a:'汉乐府', d:'汉', lvl:'小学', txt:'江南可采莲，莲叶何田田。鱼戏莲叶间。鱼戏莲叶东，鱼戏莲叶西，鱼戏莲叶南，鱼戏莲叶北。' },
+  { t:'画', a:'佚名', d:'唐', lvl:'小学', txt:'远看山有色，近听水无声。春去花还在，人来鸟不惊。' },
+  { t:'悯农（其二）', a:'李绅', d:'唐', lvl:'小学', txt:'锄禾日当午，汗滴禾下土。谁知盘中餐，粒粒皆辛苦。' },
+  { t:'古朗月行（节选）', a:'李白', d:'唐', lvl:'小学', txt:'小时不识月，呼作白玉盘。又疑瑶台镜，飞在青云端。' },
+  { t:'风', a:'李峤', d:'唐', lvl:'小学', txt:'解落三秋叶，能开二月花。过江千尺浪，入竹万竿斜。' },
+  { t:'春晓', a:'孟浩然', d:'唐', lvl:'小学', txt:'春眠不觉晓，处处闻啼鸟。夜来风雨声，花落知多少。' },
+  { t:'赠汪伦', a:'李白', d:'唐', lvl:'小学', txt:'李白乘舟将欲行，忽闻岸上踏歌声。桃花潭水深千尺，不及汪伦送我情。' },
+  { t:'静夜思', a:'李白', d:'唐', lvl:'小学', txt:'床前明月光，疑是地上霜。举头望明月，低头思故乡。' },
+  { t:'寻隐者不遇', a:'贾岛', d:'唐', lvl:'小学', txt:'松下问童子，言师采药去。只在此山中，云深不知处。' },
+  { t:'池上', a:'白居易', d:'唐', lvl:'小学', txt:'小娃撑小艇，偷采白莲回。不解藏踪迹，浮萍一道开。' },
+  { t:'小池', a:'杨万里', d:'宋', lvl:'小学', txt:'泉眼无声惜细流，树阴照水爱晴柔。小荷才露尖尖角，早有蜻蜓立上头。' },
+  { t:'画鸡', a:'唐寅', d:'明', lvl:'小学', txt:'头上红冠不用裁，满身雪白走将来。平生不敢轻言语，一叫千门万户开。' },
+  { t:'梅花', a:'王安石', d:'宋', lvl:'小学', txt:'墙角数枝梅，凌寒独自开。遥知不是雪，为有暗香来。' },
+  { t:'小儿垂钓', a:'胡令能', d:'唐', lvl:'小学', txt:'蓬头稚子学垂纶，侧坐莓苔草映身。路人借问遥招手，怕得鱼惊不应人。' },
+  { t:'登鹳雀楼', a:'王之涣', d:'唐', lvl:'小学', txt:'白日依山尽，黄河入海流。欲穷千里目，更上一层楼。' },
+  { t:'望庐山瀑布', a:'李白', d:'唐', lvl:'小学', txt:'日照香炉生紫烟，遥看瀑布挂前川。飞流直下三千尺，疑是银河落九天。' },
+  { t:'江雪', a:'柳宗元', d:'唐', lvl:'小学', txt:'千山鸟飞绝，万径人踪灭。孤舟蓑笠翁，独钓寒江雪。' },
+  { t:'夜宿山寺', a:'李白', d:'唐', lvl:'小学', txt:'危楼高百尺，手可摘星辰。不敢高声语，恐惊天上人。' },
+  { t:'敕勒歌', a:'北朝民歌', d:'北朝', lvl:'小学', txt:'敕勒川，阴山下，天似穹庐，笼盖四野。天苍苍，野茫茫，风吹草低见牛羊。' },
+  { t:'村居', a:'高鼎', d:'清', lvl:'小学', txt:'草长莺飞二月天，拂堤杨柳醉春烟。儿童散学归来早，忙趁东风放纸鸢。' },
+  { t:'咏柳', a:'贺知章', d:'唐', lvl:'小学', txt:'碧玉妆成一树高，万条垂下绿丝绦。不知细叶谁裁出，二月春风似剪刀。' },
+  { t:'赋得古原草送别（节选）', a:'白居易', d:'唐', lvl:'小学', txt:'离离原上草，一岁一枯荣。野火烧不尽，春风吹又生。' },
+  { t:'晓出净慈寺送林子方', a:'杨万里', d:'宋', lvl:'小学', txt:'毕竟西湖六月中，风光不与四时同。接天莲叶无穷碧，映日荷花别样红。' },
+  { t:'绝句', a:'杜甫', d:'唐', lvl:'小学', txt:'两个黄鹂鸣翠柳，一行白鹭上青天。窗含西岭千秋雪，门泊东吴万里船。' },
+  { t:'悯农（其一）', a:'李绅', d:'唐', lvl:'小学', txt:'春种一粒粟，秋收万颗子。四海无闲田，农夫犹饿死。' },
+  { t:'舟夜书所见', a:'查慎行', d:'清', lvl:'小学', txt:'月黑见渔灯，孤光一点萤。微微风簇浪，散作满河星。' },
+  { t:'所见', a:'袁枚', d:'清', lvl:'小学', txt:'牧童骑黄牛，歌声振林樾。意欲捕鸣蝉，忽然闭口立。' },
+  { t:'山行', a:'杜牧', d:'唐', lvl:'小学', txt:'远上寒山石径斜，白云生处有人家。停车坐爱枫林晚，霜叶红于二月花。' },
+  { t:'赠刘景文', a:'苏轼', d:'宋', lvl:'小学', txt:'荷尽已无擎雨盖，菊残犹有傲霜枝。一年好景君须记，最是橙黄橘绿时。' },
+  { t:'夜书所见', a:'叶绍翁', d:'宋', lvl:'小学', txt:'萧萧梧叶送寒声，江上秋风动客情。知有儿童挑促织，夜深篱落一灯明。' },
+  { t:'望天门山', a:'李白', d:'唐', lvl:'小学', txt:'天门中断楚江开，碧水东流至此回。两岸青山相对出，孤帆一片日边来。' },
+  { t:'饮湖上初晴后雨', a:'苏轼', d:'宋', lvl:'小学', txt:'水光潋滟晴方好，山色空蒙雨亦奇。欲把西湖比西子，淡妆浓抹总相宜。' },
+  { t:'望洞庭', a:'刘禹锡', d:'唐', lvl:'小学', txt:'湖光秋月两相和，潭面无风镜未磨。遥望洞庭山水翠，白银盘里一青螺。' },
+  { t:'早发白帝城', a:'李白', d:'唐', lvl:'小学', txt:'朝辞白帝彩云间，千里江陵一日还。两岸猿声啼不住，轻舟已过万重山。' },
+  { t:'采莲曲', a:'王昌龄', d:'唐', lvl:'小学', txt:'荷叶罗裙一色裁，芙蓉向脸两边开。乱入池中看不见，闻歌始觉有人来。' },
+  { t:'绝句（迟日）', a:'杜甫', d:'唐', lvl:'小学', txt:'迟日江山丽，春风花草香。泥融飞燕子，沙暖睡鸳鸯。' },
+  { t:'惠崇春江晚景', a:'苏轼', d:'宋', lvl:'小学', txt:'竹外桃花三两枝，春江水暖鸭先知。蒌蒿满地芦芽短，正是河豚欲上时。' },
+  { t:'三衢道中', a:'曾几', d:'宋', lvl:'小学', txt:'梅子黄时日日晴，小溪泛尽却山行。绿阴不减来时路，添得黄鹂四五声。' },
+  { t:'忆江南', a:'白居易', d:'唐', lvl:'小学', txt:'江南好，风景旧曾谙。日出江花红胜火，春来江水绿如蓝。能不忆江南？' },
+  { t:'元日', a:'王安石', d:'宋', lvl:'小学', txt:'爆竹声中一岁除，春风送暖入屠苏。千门万户曈曈日，总把新桃换旧符。' },
+  { t:'清明', a:'杜牧', d:'唐', lvl:'小学', txt:'清明时节雨纷纷，路上行人欲断魂。借问酒家何处有？牧童遥指杏花村。' },
+  { t:'九月九日忆山东兄弟', a:'王维', d:'唐', lvl:'小学', txt:'独在异乡为异客，每逢佳节倍思亲。遥知兄弟登高处，遍插茱萸少一人。' },
+  { t:'滁州西涧', a:'韦应物', d:'唐', lvl:'小学', txt:'独怜幽草涧边生，上有黄鹂深树鸣。春潮带雨晚来急，野渡无人舟自横。' },
+  { t:'大林寺桃花', a:'白居易', d:'唐', lvl:'小学', txt:'人间四月芳菲尽，山寺桃花始盛开。长恨春归无觅处，不知转入此中来。' },
+  { t:'鹿柴', a:'王维', d:'唐', lvl:'小学', txt:'空山不见人，但闻人语响。返景入深林，复照青苔上。' },
+  { t:'暮江吟', a:'白居易', d:'唐', lvl:'小学', txt:'一道残阳铺水中，半江瑟瑟半江红。可怜九月初三夜，露似真珠月似弓。' },
+  { t:'题西林壁', a:'苏轼', d:'宋', lvl:'小学', txt:'横看成岭侧成峰，远近高低各不同。不识庐山真面目，只缘身在此山中。' },
+  { t:'雪梅', a:'卢钺', d:'宋', lvl:'小学', txt:'梅雪争春未肯降，骚人搁笔费评章。梅须逊雪三分白，雪却输梅一段香。' },
+  { t:'嫦娥', a:'李商隐', d:'唐', lvl:'小学', txt:'云母屏风烛影深，长河渐落晓星沉。嫦娥应悔偷灵药，碧海青天夜夜心。' },
+  { t:'出塞', a:'王昌龄', d:'唐', lvl:'小学', txt:'秦时明月汉时关，万里长征人未还。但使龙城飞将在，不教胡马度阴山。' },
+  { t:'凉州词', a:'王翰', d:'唐', lvl:'小学', txt:'葡萄美酒夜光杯，欲饮琵琶马上催。醉卧沙场君莫笑，古来征战几人回？' },
+  { t:'夏日绝句', a:'李清照', d:'宋', lvl:'小学', txt:'生当作人杰，死亦为鬼雄。至今思项羽，不肯过江东。' },
+  { t:'别董大', a:'高适', d:'唐', lvl:'小学', txt:'千里黄云白日曛，北风吹雁雪纷纷。莫愁前路无知己，天下谁人不识君？' },
+  { t:'宿新市徐公店', a:'杨万里', d:'宋', lvl:'小学', txt:'篱落疏疏一径深，树头新绿未成阴。儿童急走追黄蝶，飞入菜花无处寻。' },
+  { t:'四时田园杂兴（其二十五）', a:'范成大', d:'宋', lvl:'小学', txt:'梅子金黄杏子肥，麦花雪白菜花稀。日长篱落无人过，惟有蜻蜓蛱蝶飞。' },
+  { t:'清平乐·村居', a:'辛弃疾', d:'宋', lvl:'小学', txt:'茅檐低小，溪上青青草。醉里吴音相媚好，白发谁家翁媪？大儿锄豆溪东，中儿正织鸡笼。最喜小儿亡赖，溪头卧剥莲蓬。' },
+  { t:'卜算子·咏梅', a:'毛泽东', d:'现代', lvl:'小学', txt:'风雨送春归，飞雪迎春到。已是悬崖百丈冰，犹有花枝俏。俏也不争春，只把春来报。待到山花烂漫时，她在丛中笑。' },
+  { t:'蜂', a:'罗隐', d:'唐', lvl:'小学', txt:'不论平地与山尖，无限风光尽被占。采得百花成蜜后，为谁辛苦为谁甜？' },
+  { t:'独坐敬亭山', a:'李白', d:'唐', lvl:'小学', txt:'众鸟高飞尽，孤云独去闲。相看两不厌，只有敬亭山。' },
+  { t:'芙蓉楼送辛渐', a:'王昌龄', d:'唐', lvl:'小学', txt:'寒雨连江夜入吴，平明送客楚山孤。洛阳亲友如相问，一片冰心在玉壶。' },
+  { t:'塞下曲', a:'卢纶', d:'唐', lvl:'小学', txt:'月黑雁飞高，单于夜遁逃。欲将轻骑逐，大雪满弓刀。' },
+  { t:'墨梅', a:'王冕', d:'元', lvl:'小学', txt:'吾家洗砚池头树，朵朵花开淡墨痕。不要人夸好颜色，只留清气满乾坤。' },
+  { t:'蝉', a:'虞世南', d:'唐', lvl:'小学', txt:'垂緌饮清露，流响出疏桐。居高声自远，非是藉秋风。' },
+  { t:'乞巧', a:'林杰', d:'唐', lvl:'小学', txt:'七夕今宵看碧霄，牵牛织女渡河桥。家家乞巧望秋月，穿尽红丝几万条。' },
+  { t:'示儿', a:'陆游', d:'宋', lvl:'小学', txt:'死去元知万事空，但悲不见九州同。王师北定中原日，家祭无忘告乃翁。' },
+  { t:'题临安邸', a:'林升', d:'宋', lvl:'小学', txt:'山外青山楼外楼，西湖歌舞几时休？暖风熏得游人醉，直把杭州作汴州。' },
+  { t:'己亥杂诗', a:'龚自珍', d:'清', lvl:'小学', txt:'九州生气恃风雷，万马齐喑究可哀。我劝天公重抖擞，不拘一格降人才。' },
+  { t:'山居秋暝', a:'王维', d:'唐', lvl:'小学', txt:'空山新雨后，天气晚来秋。明月松间照，清泉石上流。竹喧归浣女，莲动下渔舟。随意春芳歇，王孙自可留。' },
+  { t:'枫桥夜泊', a:'张继', d:'唐', lvl:'小学', txt:'月落乌啼霜满天，江枫渔火对愁眠。姑苏城外寒山寺，夜半钟声到客船。' },
+  { t:'长相思', a:'纳兰性德', d:'清', lvl:'小学', txt:'山一程，水一程，身向榆关那畔行，夜深千帐灯。风一更，雪一更，聒碎乡心梦不成，故园无此声。' },
+  { t:'渔歌子', a:'张志和', d:'唐', lvl:'小学', txt:'西塞山前白鹭飞，桃花流水鳜鱼肥。青箬笠，绿蓑衣，斜风细雨不须归。' },
+  { t:'观书有感（其一）', a:'朱熹', d:'宋', lvl:'小学', txt:'半亩方塘一鉴开，天光云影共徘徊。问渠那得清如许？为有源头活水来。' },
+  { t:'观书有感（其二）', a:'朱熹', d:'宋', lvl:'小学', txt:'昨夜江边春水生，蒙冲巨舰一毛轻。向来枉费推移力，此日中流自在行。' },
+  { t:'四时田园杂兴（其三十一）', a:'范成大', d:'宋', lvl:'小学', txt:'昼出耘田夜绩麻，村庄儿女各当家。童孙未解供耕织，也傍桑阴学种瓜。' },
+  { t:'稚子弄冰', a:'杨万里', d:'宋', lvl:'小学', txt:'稚子金盆脱晓冰，彩丝穿取当银铮。敲成玉磬穿林响，忽作玻璃碎地声。' },
+  { t:'村晚', a:'雷震', d:'宋', lvl:'小学', txt:'草满池塘水满陂，山衔落日浸寒漪。牧童归去横牛背，短笛无腔信口吹。' },
+  { t:'鸟鸣涧', a:'王维', d:'唐', lvl:'小学', txt:'人闲桂花落，夜静春山空。月出惊山鸟，时鸣春涧中。' },
+  { t:'凉州词（黄河）', a:'王之涣', d:'唐', lvl:'小学', txt:'黄河远上白云间，一片孤城万仞山。羌笛何须怨杨柳，春风不度玉门关。' },
+  { t:'送元二使安西', a:'王维', d:'唐', lvl:'小学', txt:'渭城朝雨浥轻尘，客舍青青柳色新。劝君更尽一杯酒，西出阳关无故人。' },
+  { t:'秋夜将晓出篱门迎凉有感', a:'陆游', d:'宋', lvl:'小学', txt:'三万里河东入海，五千仞岳上摩天。遗民泪尽胡尘里，南望王师又一年。' },
+  { t:'黄鹤楼送孟浩然之广陵', a:'李白', d:'唐', lvl:'小学', txt:'故人西辞黄鹤楼，烟花三月下扬州。孤帆远影碧空尽，唯见长江天际流。' },
+  { t:'寒菊', a:'郑思肖', d:'宋', lvl:'小学', txt:'花开不并百花丛，独立疏篱趣未穷。宁可枝头抱香死，何曾吹落北风中。' },
+  { t:'乡村四月', a:'翁卷', d:'宋', lvl:'小学', txt:'绿遍山原白满川，子规声里雨如烟。乡村四月闲人少，才了蚕桑又插田。' },
+  { t:'宿建德江', a:'孟浩然', d:'唐', lvl:'小学', txt:'移舟泊烟渚，日暮客愁新。野旷天低树，江清月近人。' },
+  { t:'六月二十七日望湖楼醉书', a:'苏轼', d:'宋', lvl:'小学', txt:'黑云翻墨未遮山，白雨跳珠乱入船。卷地风来忽吹散，望湖楼下水如天。' },
+  { t:'西江月·夜行黄沙道中', a:'辛弃疾', d:'宋', lvl:'小学', txt:'明月别枝惊鹊，清风半夜鸣蝉。稻花香里说丰年，听取蛙声一片。七八个星天外，两三点雨山前。旧时茅店社林边，路转溪桥忽见。' },
+  { t:'过故人庄', a:'孟浩然', d:'唐', lvl:'小学', txt:'故人具鸡黍，邀我至田家。绿树村边合，青山郭外斜。开轩面场圃，把酒话桑麻。待到重阳日，还来就菊花。' },
+  { t:'七律·长征', a:'毛泽东', d:'现代', lvl:'小学', txt:'红军不怕远征难，万水千山只等闲。五岭逶迤腾细浪，乌蒙磅礴走泥丸。金沙水拍云崖暖，大渡桥横铁索寒。更喜岷山千里雪，三军过后尽开颜。' },
+  { t:'菩萨蛮·大柏地', a:'毛泽东', d:'现代', lvl:'小学', txt:'赤橙黄绿青蓝紫，谁持彩练当空舞？雨后复斜阳，关山阵阵苍。' },
+  { t:'春日', a:'朱熹', d:'宋', lvl:'小学', txt:'胜日寻芳泗水滨，无边光景一时新。等闲识得东风面，万紫千红总是春。' },
+  { t:'回乡偶书', a:'贺知章', d:'唐', lvl:'小学', txt:'少小离家老大回，乡音无改鬓毛衰。儿童相见不相识，笑问客从何处来。' },
+  { t:'浪淘沙（其一）', a:'刘禹锡', d:'唐', lvl:'小学', txt:'九曲黄河万里沙，浪淘风簸自天涯。如今直上银河去，同到牵牛织女家。' },
+  { t:'江南春', a:'杜牧', d:'唐', lvl:'小学', txt:'千里莺啼绿映红，水村山郭酒旗风。南朝四百八十寺，多少楼台烟雨中。' },
+  { t:'书湖阴先生壁', a:'王安石', d:'宋', lvl:'小学', txt:'茅檐长扫净无苔，花木成畦手自栽。一水护田将绿绕，两山排闼送青来。' },
+  { t:'寒食', a:'韩翃', d:'唐', lvl:'小学', txt:'春城无处不飞花，寒食东风御柳斜。日暮汉宫传蜡烛，轻烟散入五侯家。' },
+  { t:'迢迢牵牛星', a:'佚名', d:'汉', lvl:'小学', txt:'迢迢牵牛星，皎皎河汉女。纤纤擢素手，札札弄机杼。终日不成章，泣涕零如雨。河汉清且浅，相去复几许。盈盈一水间，脉脉不得语。' },
+  { t:'十五夜望月', a:'王建', d:'唐', lvl:'小学', txt:'中庭地白树栖鸦，冷露无声湿桂花。今夜月明人尽望，不知秋思落谁家？' },
+  { t:'长歌行', a:'汉乐府', d:'汉', lvl:'小学', txt:'青青园中葵，朝露待日晞。阳春布德泽，万物生光辉。常恐秋节至，焜黄华叶衰。百川东到海，何时复西归？少壮不努力，老大徒伤悲！' },
+  { t:'马诗', a:'李贺', d:'唐', lvl:'小学', txt:'大漠沙如雪，燕山月似钩。何当金络脑，快走踏清秋。' },
+  { t:'石灰吟', a:'于谦', d:'明', lvl:'小学', txt:'千锤万凿出深山，烈火焚烧若等闲。粉骨碎身浑不怕，要留清白在人间。' },
+  { t:'竹石', a:'郑燮', d:'清', lvl:'小学', txt:'咬定青山不放松，立根原在破岩中。千磨万击还坚劲，任尔东西南北风。' },
+  { t:'采薇（节选）', a:'佚名', d:'先秦', lvl:'小学', txt:'昔我往矣，杨柳依依。今我来思，雨雪霏霏。行道迟迟，载渴载饥。我心伤悲，莫知我哀！' },
+  { t:'春夜喜雨', a:'杜甫', d:'唐', lvl:'小学', txt:'好雨知时节，当春乃发生。随风潜入夜，润物细无声。野径云俱黑，江船火独明。晓看红湿处，花重锦官城。' },
+  { t:'闻官军收河南河北', a:'杜甫', d:'唐', lvl:'小学', txt:'剑外忽传收蓟北，初闻涕泪满衣裳。却看妻子愁何在，漫卷诗书喜欲狂。白日放歌须纵酒，青春作伴好还乡。即从巴峡穿巫峡，便下襄阳向洛阳。' },
+  { t:'早春呈水部张十八员外', a:'韩愈', d:'唐', lvl:'小学', txt:'天街小雨润如酥，草色遥看近却无。最是一年春好处，绝胜烟柳满皇都。' },
+  { t:'江上渔者', a:'范仲淹', d:'宋', lvl:'小学', txt:'江上往来人，但爱鲈鱼美。君看一叶舟，出没风波里。' },
+  { t:'泊船瓜洲', a:'王安石', d:'宋', lvl:'小学', txt:'京口瓜洲一水间，钟山只隔数重山。春风又绿江南岸，明月何时照我还。' },
+  { t:'游园不值', a:'叶绍翁', d:'宋', lvl:'小学', txt:'应怜屐齿印苍苔，小扣柴扉久不开。春色满园关不住，一枝红杏出墙来。' },
+  { t:'卜算子·送鲍浩然之浙东', a:'王观', d:'宋', lvl:'小学', txt:'水是眼波横，山是眉峰聚。欲问行人去那边？眉眼盈盈处。才始送春归，又送君归去。若到江南赶上春，千万和春住。' },
+  { t:'浣溪沙', a:'苏轼', d:'宋', lvl:'小学', txt:'游蕲水清泉寺，寺临兰溪，溪水西流。山下兰芽短浸溪，松间沙路净无泥，潇潇暮雨子规啼。谁道人生无再少？门前流水尚能西！休将白发唱黄鸡。' },
+  { t:'清平乐', a:'黄庭坚', d:'宋', lvl:'小学', txt:'春归何处？寂寞无行路。若有人知春去处，唤取归来同住。春无踪迹谁知？除非问取黄鹂。百啭无人能解，因风飞过蔷薇。' },
+  { t:'人之初（三字经）', a:'王应麟', d:'宋', lvl:'小学', txt:'人之初，性本善。性相近，习相远。苟不教，性乃迁。教之道，贵以专。' },
+  { t:'司马光', a:'佚名', d:'宋', lvl:'小学', txt:'群儿戏于庭，一儿登瓮，足跌没水中。众皆弃去，光持石击瓮破之，水迸，儿得活。' },
+  { t:'守株待兔', a:'韩非', d:'先秦', lvl:'小学', txt:'宋人有耕者。田中有株。兔走触株，折颈而死。因释其耒而守株，冀复得兔。兔不可复得，而身为宋国笑。' },
+  { t:'精卫填海', a:'佚名', d:'先秦', lvl:'小学', txt:'炎帝之少女，名曰女娃。女娃游于东海，溺而不返，故为精卫，常衔西山之木石，以堙于东海。' },
+  { t:'王戎不取道旁李', a:'刘义庆', d:'南朝宋', lvl:'小学', txt:'王戎七岁，尝与诸小儿游。看道边李树多子折枝，诸儿竞走取之，唯戎不动。人问之，答曰：“树在道边而多子，此必苦李。”取之，信然。' },
+  { t:'囊萤夜读', a:'佚名', d:'唐', lvl:'小学', txt:'胤恭勤不倦，博学多通。家贫不常得油，夏月则练囊盛数十萤火以照书，以夜继日焉。' },
+  { t:'铁杵成针', a:'祝穆', d:'宋', lvl:'小学', txt:'磨针溪，在象耳山下。世传李太白读书山中，未成，弃去。过是溪，逢老媪方磨铁杵。问之，曰：“欲作针。”太白感其意，还卒业。' },
+  { t:'古人谈读书', a:'佚名', d:'先秦', lvl:'小学', txt:'敏而好学，不耻下问。知之为知之，不知为不知，是知也。默而识之，学而不厌，诲人不倦。' },
+  { t:'少年中国说（节选）', a:'梁启超', d:'清', lvl:'小学', txt:'故今日之责任，不在他人，而全在我少年。少年智则国智，少年富则国富，少年强则国强，少年独立则国独立，少年自由则国自由，少年进步则国进步。' },
+  { t:'自相矛盾', a:'韩非', d:'先秦', lvl:'小学', txt:'楚人有鬻盾与矛者，誉之曰：“吾盾之坚，物莫能陷也。”又誉其矛曰：“吾矛之利，于物无不陷也。”或曰：“以子之矛陷子之盾，何如？”其人弗能应也。夫不可陷之盾与无不陷之矛，不可同世而立。' },
+  { t:'杨氏之子', a:'刘义庆', d:'南朝宋', lvl:'小学', txt:'梁国杨氏子九岁，甚聪惠。孔君平诣其父，父不在，乃呼儿出。为设果，果有杨梅。孔指以示儿曰：“此是君家果。”儿应声答曰：“未闻孔雀是夫子家禽。”' },
+  { t:'伯牙鼓琴', a:'佚名', d:'先秦', lvl:'小学', txt:'伯牙鼓琴，锺子期听之。方鼓琴而志在太山，锺子期曰：“善哉乎鼓琴，巍巍乎若太山。”少选之间而志在流水，锺子期又曰：“善哉乎鼓琴，汤汤乎若流水。”锺子期死，伯牙破琴绝弦，终身不复鼓琴，以为世无足复为鼓琴者。' },
+  { t:'书戴嵩画牛', a:'苏轼', d:'宋', lvl:'小学', txt:'蜀中有杜处士，好书画，所宝以百数。有戴嵩《牛》一轴，尤所爱，锦囊玉轴，常以自随。一日曝书画，有一牧童见之，拊掌大笑，曰：“此画斗牛也。牛斗，力在角，尾搐入两股间，今乃掉尾而斗，谬矣。”处士笑而然之。' },
+  { t:'学弈', a:'孟子', d:'先秦', lvl:'小学', txt:'弈秋，通国之善弈者也。使弈秋诲二人弈，其一人专心致志，惟弈秋之为听；一人虽听之，一心以为有鸿鹄将至，思援弓缴而射之。虽与之俱学，弗若之矣。为是其智弗若与？曰：非然也。' },
+  { t:'两小儿辩日', a:'列御寇', d:'先秦', lvl:'小学', txt:'孔子东游，见两小儿辩斗，问其故。一儿曰：“我以日始出时去人近，而日中时远也。”一儿曰：“我以日初出远，而日中时近也。”两小儿笑曰：“孰为汝多知乎？”' },
+  { t:'观沧海', a:'曹操', d:'东汉', lvl:'初中', txt:'东临碣石，以观沧海。水何澹澹，山岛竦峙。树木丛生，百草丰茂。秋风萧瑟，洪波涌起。日月之行，若出其中；星汉灿烂，若出其里。幸甚至哉，歌以咏志。' },
+  { t:'次北固山下', a:'王湾', d:'唐', lvl:'初中', txt:'客路青山外，行舟绿水前。潮平两岸阔，风正一帆悬。海日生残夜，江春入旧年。乡书何处达？归雁洛阳边。' },
+  { t:'天净沙·秋思', a:'马致远', d:'元', lvl:'初中', txt:'枯藤老树昏鸦，小桥流水人家，古道西风瘦马。夕阳西下，断肠人在天涯。' },
+  { t:'闻王昌龄左迁龙标遥有此寄', a:'李白', d:'唐', lvl:'初中', txt:'杨花落尽子规啼，闻道龙标过五溪。我寄愁心与明月，随君直到夜郎西。' },
+  { t:'使至塞上', a:'王维', d:'唐', lvl:'初中', txt:'单车欲问边，属国过居延。征蓬出汉塞，归雁入胡天。大漠孤烟直，长河落日圆。萧关逢候骑，都护在燕然。' },
+  { t:'渡荆门送别', a:'李白', d:'唐', lvl:'初中', txt:'渡远荆门外，来从楚国游。山随平野尽，江入大荒流。月下飞天镜，云生结海楼。仍怜故乡水，万里送行舟。' },
+  { t:'钱塘湖春行', a:'白居易', d:'唐', lvl:'初中', txt:'孤山寺北贾亭西，水面初平云脚低。几处早莺争暖树，谁家新燕啄春泥。乱花渐欲迷人眼，浅草才能没马蹄。最爱湖东行不足，绿杨阴里白沙堤。' },
+  { t:'饮酒（其五）', a:'陶渊明', d:'晋', lvl:'初中', txt:'结庐在人境，而无车马喧。问君何能尔？心远地自偏。采菊东篱下，悠然见南山。山气日夕佳，飞鸟相与还。此中有真意，欲辨已忘言。' },
+  { t:'行路难（其一）', a:'李白', d:'唐', lvl:'初中', txt:'金樽清酒斗十千，玉盘珍羞直万钱。停杯投箸不能食，拔剑四顾心茫然。欲渡黄河冰塞川，将登太行雪满山。闲来垂钓碧溪上，忽复乘舟梦日边。行路难，行路难，多歧路，今安在？长风破浪会有时，直挂云帆济沧海。' },
+  { t:'望岳', a:'杜甫', d:'唐', lvl:'初中', txt:'岱宗夫如何？齐鲁青未了。造化钟神秀，阴阳割昏晓。荡胸生曾云，决眦入归鸟。会当凌绝顶，一览众山小。' },
+  { t:'春望', a:'杜甫', d:'唐', lvl:'初中', txt:'国破山河在，城春草木深。感时花溅泪，恨别鸟惊心。烽火连三月，家书抵万金。白头搔更短，浑欲不胜簪。' },
+  { t:'登飞来峰', a:'王安石', d:'宋', lvl:'初中', txt:'飞来山上千寻塔，闻说鸡鸣见日升。不畏浮云遮望眼，自缘身在最高层。' },
+  { t:'赤壁', a:'杜牧', d:'唐', lvl:'初中', txt:'折戟沉沙铁未销，自将磨洗认前朝。东风不与周郎便，铜雀春深锁二乔。' },
+  { t:'过零丁洋', a:'文天祥', d:'宋', lvl:'初中', txt:'辛苦遭逢起一经，干戈寥落四周星。山河破碎风飘絮，身世浮沉雨打萍。惶恐滩头说惶恐，零丁洋里叹零丁。人生自古谁无死？留取丹心照汗青。' },
+  { t:'山坡羊·潼关怀古', a:'张养浩', d:'元', lvl:'初中', txt:'峰峦如聚，波涛如怒，山河表里潼关路。望西都，意踌躇。伤心秦汉经行处，宫阙万间都做了土。兴，百姓苦；亡，百姓苦。' },
+  { t:'酬乐天扬州初逢席上见赠', a:'刘禹锡', d:'唐', lvl:'初中', txt:'巴山楚水凄凉地，二十三年弃置身。怀旧空吟闻笛赋，到乡翻似烂柯人。沉舟侧畔千帆过，病树前头万木春。今日听君歌一曲，暂凭杯酒长精神。' },
+  { t:'己亥杂诗（其五）', a:'龚自珍', d:'清', lvl:'初中', txt:'浩荡离愁白日斜，吟鞭东指即天涯。落红不是无情物，化作春泥更护花。' },
+  { t:'茅屋为秋风所破歌', a:'杜甫', d:'唐', lvl:'初中', txt:'八月秋高风怒号，卷我屋上三重茅。茅飞渡江洒江郊，高者挂罥长林梢，下者飘转沉塘坳。南村群童欺我老无力，忍能对面为盗贼。公然抱茅入竹去，唇焦口燥呼不得，归来倚杖自叹息。俄顷风定云墨色，秋天漠漠向昏黑。布衾多年冷似铁，娇儿恶卧踏里裂。床头屋漏无干处，雨脚如麻未断绝。自经丧乱少睡眠，长夜沾湿何由彻！安得广厦千万间，大庇天下寒士俱欢颜！风雨不动安如山。呜呼！何时眼前突兀见此屋，吾庐独破受冻死亦足！' },
+  { t:'白雪歌送武判官归京', a:'岑参', d:'唐', lvl:'初中', txt:'北风卷地白草折，胡天八月即飞雪。忽如一夜春风来，千树万树梨花开。散入珠帘湿罗幕，狐裘不暖锦衾薄。将军角弓不得控，都护铁衣冷难着。瀚海阑干百丈冰，愁云惨淡万里凝。中军置酒饮归客，胡琴琵琶与羌笛。纷纷暮雪下辕门，风掣红旗冻不翻。轮台东门送君去，去时雪满天山路。山回路转不见君，雪上空留马行处。' },
+  { t:'峨眉山月歌', a:'李白', d:'唐', lvl:'初中', txt:'峨眉山月半轮秋，影入平羌江水流。夜发清溪向三峡，思君不见下渝州。' },
+  { t:'江南逢李龟年', a:'杜甫', d:'唐', lvl:'初中', txt:'岐王宅里寻常见，崔九堂前几度闻。正是江南好风景，落花时节又逢君。' },
+  { t:'行军九日思长安故园', a:'岑参', d:'唐', lvl:'初中', txt:'强欲登高去，无人送酒来。遥怜故园菊，应傍战场开。' },
+  { t:'夜上受降城闻笛', a:'李益', d:'唐', lvl:'初中', txt:'回乐烽前沙似雪，受降城外月如霜。不知何处吹芦管，一夜征人尽望乡。' },
+  { t:'秋词（其一）', a:'刘禹锡', d:'唐', lvl:'初中', txt:'自古逢秋悲寂寥，我言秋日胜春朝。晴空一鹤排云上，便引诗情到碧霄。' },
+  { t:'夜雨寄北', a:'李商隐', d:'唐', lvl:'初中', txt:'君问归期未有期，巴山夜雨涨秋池。何当共剪西窗烛，却话巴山夜雨时。' },
+  { t:'十一月四日风雨大作（其二）', a:'陆游', d:'宋', lvl:'初中', txt:'僵卧孤村不自哀，尚思为国戍轮台。夜阑卧听风吹雨，铁马冰河入梦来。' },
+  { t:'潼关', a:'谭嗣同', d:'清', lvl:'初中', txt:'终古高云簇此城，秋风吹散马蹄声。河流大野犹嫌束，山入潼关不解平。' },
+  { t:'木兰诗', a:'佚名', d:'北朝', lvl:'初中', txt:'唧唧复唧唧，木兰当户织。不闻机杼声，唯闻女叹息。问女何所思，问女何所忆。女亦无所思，女亦无所忆。昨夜见军帖，可汗大点兵，军书十二卷，卷卷有爷名。阿爷无大儿，木兰无长兄，愿为市鞍马，从此替爷征。东市买骏马，西市买鞍鞯，南市买辔头，北市买长鞭。旦辞爷娘去，暮宿黄河边，不闻爷娘唤女声，但闻黄河流水鸣溅溅。旦辞黄河去，暮至黑山头，不闻爷娘唤女声，但闻燕山胡骑鸣啾啾。万里赴戎机，关山度若飞。朔气传金柝，寒光照铁衣。将军百战死，壮士十年归。归来见天子，天子坐明堂。策勋十二转，赏赐百千强。可汗问所欲，木兰不用尚书郎，愿驰千里足，送儿还故乡。爷娘闻女来，出郭相扶将；阿姊闻妹来，当户理红妆；小弟闻姊来，磨刀霍霍向猪羊。开我东阁门，坐我西阁床，脱我战时袍，著我旧时裳。当窗理云鬓，对镜帖花黄。出门看火伴，火伴皆惊忙：同行十二年，不知木兰是女郎。雄兔脚扑朔，雌兔眼迷离；双兔傍地走，安能辨我是雄雌？' },
+  { t:'竹里馆', a:'王维', d:'唐', lvl:'初中', txt:'独坐幽篁里，弹琴复长啸。深林人不知，明月来相照。' },
+  { t:'春夜洛城闻笛', a:'李白', d:'唐', lvl:'初中', txt:'谁家玉笛暗飞声，散入春风满洛城。此夜曲中闻折柳，何人不起故园情。' },
+  { t:'逢入京使', a:'岑参', d:'唐', lvl:'初中', txt:'故园东望路漫漫，双袖龙钟泪不干。马上相逢无纸笔，凭君传语报平安。' },
+  { t:'晚春', a:'韩愈', d:'唐', lvl:'初中', txt:'草树知春不久归，百般红紫斗芳菲。杨花榆荚无才思，惟解漫天作雪飞。' },
+  { t:'登幽州台歌', a:'陈子昂', d:'唐', lvl:'初中', txt:'前不见古人，后不见来者。念天地之悠悠，独怆然而涕下。' },
+  { t:'游山西村', a:'陆游', d:'宋', lvl:'初中', txt:'莫笑农家腊酒浑，丰年留客足鸡豚。山重水复疑无路，柳暗花明又一村。箫鼓追随春社近，衣冠简朴古风存。从今若许闲乘月，拄杖无时夜叩门。' },
+  { t:'泊秦淮', a:'杜牧', d:'唐', lvl:'初中', txt:'烟笼寒水月笼沙，夜泊秦淮近酒家。商女不知亡国恨，隔江犹唱后庭花。' },
+  { t:'贾生', a:'李商隐', d:'唐', lvl:'初中', txt:'宣室求贤访逐臣，贾生才调更无伦。可怜夜半虚前席，不问苍生问鬼神。' },
+  { t:'过松源晨炊漆公店（其五）', a:'杨万里', d:'宋', lvl:'初中', txt:'莫言下岭便无难，赚得行人错喜欢。正入万山围子里，一山放出一山拦。' },
+  { t:'约客', a:'赵师秀', d:'宋', lvl:'初中', txt:'黄梅时节家家雨，青草池塘处处蛙。有约不来过夜半，闲敲棋子落灯花。' },
+  { t:'野望', a:'王绩', d:'唐', lvl:'初中', txt:'东皋薄暮望，徙倚欲何依。树树皆秋色，山山唯落晖。牧人驱犊返，猎马带禽归。相顾无相识，长歌怀采薇。' },
+  { t:'黄鹤楼', a:'崔颢', d:'唐', lvl:'初中', txt:'昔人已乘黄鹤去，此地空余黄鹤楼。黄鹤一去不复返，白云千载空悠悠。晴川历历汉阳树，芳草萋萋鹦鹉洲。日暮乡关何处是？烟波江上使人愁。' },
+  { t:'庭中有奇树', a:'佚名', d:'汉', lvl:'初中', txt:'庭中有奇树，绿叶发华滋。攀条折其荣，将以遗所思。馨香盈怀袖，路远莫致之。此物何足贵？但感别经时。' },
+  { t:'龟虽寿', a:'曹操', d:'东汉', lvl:'初中', txt:'神龟虽寿，犹有竟时；腾蛇乘雾，终为土灰。老骥伏枥，志在千里；烈士暮年，壮心不已。盈缩之期，不但在天；养怡之福，可得永年。幸甚至哉，歌以咏志。' },
+  { t:'赠从弟（其二）', a:'刘桢', d:'汉', lvl:'初中', txt:'亭亭山上松，瑟瑟谷中风。风声一何盛，松枝一何劲！冰霜正惨凄，终岁常端正。岂不罹凝寒？松柏有本性。' },
+  { t:'梁甫行', a:'曹植', d:'三国', lvl:'初中', txt:'八方各异气，千里殊风雨。剧哉边海民，寄身于草野。妻子象禽兽，行止依林阻。柴门何萧条，狐兔翔我宇。' },
+  { t:'雁门太守行', a:'李贺', d:'唐', lvl:'初中', txt:'黑云压城城欲摧，甲光向日金鳞开。角声满天秋色里，塞上燕脂凝夜紫。半卷红旗临易水，霜重鼓寒声不起。报君黄金台上意，提携玉龙为君死。' },
+  { t:'渔家傲（天接云涛连晓雾）', a:'李清照', d:'宋', lvl:'初中', txt:'天接云涛连晓雾，星河欲转千帆舞。仿佛梦魂归帝所。闻天语，殷勤问我归何处。我报路长嗟日暮，学诗谩有惊人句。九万里风鹏正举。风休住，蓬舟吹取三山去。' },
+  { t:'浣溪沙（一曲新词酒一杯）', a:'晏殊', d:'宋', lvl:'初中', txt:'一曲新词酒一杯，去年天气旧亭台。夕阳西下几时回？无可奈何花落去，似曾相识燕归来。小园香径独徘徊。' },
+  { t:'采桑子（轻舟短棹西湖好）', a:'欧阳修', d:'宋', lvl:'初中', txt:'轻舟短棹西湖好，绿水逶迤，芳草长堤，隐隐笙歌处处随。无风水面琉璃滑，不觉船移，微动涟漪，惊起沙禽掠岸飞。' },
+  { t:'相见欢（金陵城上西楼）', a:'朱敦儒', d:'宋', lvl:'初中', txt:'金陵城上西楼，倚清秋。万里夕阳垂地大江流。中原乱，簪缨散，几时收？试倩悲风吹泪过扬州。' },
+  { t:'如梦令（常记溪亭日暮）', a:'李清照', d:'宋', lvl:'初中', txt:'常记溪亭日暮，沉醉不知归路。兴尽晚回舟，误入藕花深处。争渡，争渡，惊起一滩鸥鹭。' },
+  { t:'关雎', a:'佚名', d:'先秦', lvl:'初中', txt:'关关雎鸠，在河之洲。窈窕淑女，君子好逑。参差荇菜，左右流之。窈窕淑女，寤寐求之。求之不得，寤寐思服。悠哉悠哉，辗转反侧。参差荇菜，左右采之。窈窕淑女，琴瑟友之。参差荇菜，左右芼之。窈窕淑女，钟鼓乐之。' },
+  { t:'蒹葭', a:'佚名', d:'先秦', lvl:'初中', txt:'蒹葭苍苍，白露为霜。所谓伊人，在水一方。溯洄从之，道阻且长。溯游从之，宛在水中央。蒹葭萋萋，白露未晞。所谓伊人，在水之湄。溯洄从之，道阻且跻。溯游从之，宛在水中坻。蒹葭采采，白露未已。所谓伊人，在水之涘。溯洄从之，道阻且右。溯游从之，宛在水中沚。' },
+  { t:'式微', a:'佚名', d:'先秦', lvl:'初中', txt:'式微，式微，胡不归？微君之故，胡为乎中露？式微，式微，胡不归？微君之躬，胡为乎泥中？' },
+  { t:'子衿', a:'佚名', d:'先秦', lvl:'初中', txt:'青青子衿，悠悠我心。纵我不往，子宁不嗣音？青青子佩，悠悠我思。纵我不往，子宁不来？挑兮达兮，在城阙兮。一日不见，如三月兮。' },
+  { t:'送杜少府之任蜀州', a:'王勃', d:'唐', lvl:'初中', txt:'城阙辅三秦，风烟望五津。与君离别意，同是宦游人。海内存知己，天涯若比邻。无为在歧路，儿女共沾巾。' },
+  { t:'望洞庭湖赠张丞相', a:'孟浩然', d:'唐', lvl:'初中', txt:'八月湖水平，涵虚混太清。气蒸云梦泽，波撼岳阳城。欲济无舟楫，端居耻圣明。坐观垂钓者，徒有羡鱼情。' },
+  { t:'石壕吏', a:'杜甫', d:'唐', lvl:'初中', txt:'暮投石壕村，有吏夜捉人。老翁逾墙走，老妇出门看。吏呼一何怒！妇啼一何苦！听妇前致词：三男邺城戍。一男附书至，二男新战死。存者且偷生，死者长已矣！室中更无人，惟有乳下孙。有孙母未去，出入无完裙。老妪力虽衰，请从吏夜归。急应河阳役，犹得备晨炊。夜久语声绝，如闻泣幽咽。天明登前途，独与老翁别。' },
+  { t:'卖炭翁', a:'白居易', d:'唐', lvl:'初中', txt:'卖炭翁，伐薪烧炭南山中。满面尘灰烟火色，两鬓苍苍十指黑。卖炭得钱何所营？身上衣裳口中食。可怜身上衣正单，心忧炭贱愿天寒。夜来城外一尺雪，晓驾炭车辗冰辙。牛困人饥日已高，市南门外泥中歇。翩翩两骑来是谁？黄衣使者白衫儿。手把文书口称敕，回车叱牛牵向北。一车炭，千余斤，宫使驱将惜不得。半匹红纱一丈绫，系向牛头充炭直。' },
+  { t:'题破山寺后禅院', a:'常建', d:'唐', lvl:'初中', txt:'清晨入古寺，初日照高林。曲径通幽处，禅房花木深。山光悦鸟性，潭影空人心。万籁此都寂，但余钟磬音。' },
+  { t:'送友人', a:'李白', d:'唐', lvl:'初中', txt:'青山横北郭，白水绕东城。此地一为别，孤蓬万里征。浮云游子意，落日故人情。挥手自兹去，萧萧班马鸣。' },
+  { t:'卜算子·黄州定慧院寓居作', a:'苏轼', d:'宋', lvl:'初中', txt:'缺月挂疏桐，漏断人初静。谁见幽人独往来，缥缈孤鸿影。惊起却回头，有恨无人省。拣尽寒枝不肯栖，寂寞沙洲冷。' },
+  { t:'卜算子·咏梅（陆游）', a:'陆游', d:'宋', lvl:'初中', txt:'驿外断桥边，寂寞开无主。已是黄昏独自愁，更著风和雨。无意苦争春，一任群芳妒。零落成泥碾作尘，只有香如故。' },
+  { t:'沁园春·雪', a:'毛泽东', d:'现代', lvl:'初中', txt:'北国风光，千里冰封，万里雪飘。望长城内外，惟余莽莽；大河上下，顿失滔滔。山舞银蛇，原驰蜡象，欲与天公试比高。须晴日，看红装素裹，分外妖娆。江山如此多娇，引无数英雄竞折腰。惜秦皇汉武，略输文采；唐宗宋祖，稍逊风骚。一代天骄，成吉思汗，只识弯弓射大雕。俱往矣，数风流人物，还看今朝。' },
+  { t:'水调歌头（明月几时有）', a:'苏轼', d:'宋', lvl:'初中', txt:'明月几时有？把酒问青天。不知天上宫阙，今夕是何年。我欲乘风归去，又恐琼楼玉宇，高处不胜寒。起舞弄清影，何似在人间。转朱阁，低绮户，照无眠。不应有恨，何事长向别时圆？人有悲欢离合，月有阴晴圆缺，此事古难全。但愿人长久，千里共婵娟。' },
+  { t:'月夜忆舍弟', a:'杜甫', d:'唐', lvl:'初中', txt:'戍鼓断人行，边秋一雁声。露从今夜白，月是故乡明。有弟皆分散，无家问死生。寄书长不达，况乃未休兵。' },
+  { t:'长沙过贾谊宅', a:'刘长卿', d:'唐', lvl:'初中', txt:'三年谪宦此栖迟，万古惟留楚客悲。秋草独寻人去后，寒林空见日斜时。汉文有道恩犹薄，湘水无情吊岂知。寂寂江山摇落处，怜君何事到天涯。' },
+  { t:'左迁至蓝关示侄孙湘', a:'韩愈', d:'唐', lvl:'初中', txt:'一封朝奏九重天，夕贬潮州路八千。欲为圣明除弊事，肯将衰朽惜残年。云横秦岭家何在？雪拥蓝关马不前。知汝远来应有意，好收吾骨瘴江边。' },
+  { t:'商山早行', a:'温庭筠', d:'唐', lvl:'初中', txt:'晨起动征铎，客行悲故乡。鸡声茅店月，人迹板桥霜。槲叶落山路，枳花明驿墙。因思杜陵梦，凫雁满回塘。' },
+  { t:'咸阳城东楼', a:'许浑', d:'唐', lvl:'初中', txt:'一上高城万里愁，蒹葭杨柳似汀洲。溪云初起日沉阁，山雨欲来风满楼。鸟下绿芜秦苑夕，蝉鸣黄叶汉宫秋。行人莫问当年事，故国东来渭水流。' },
+  { t:'无题', a:'李商隐', d:'唐', lvl:'初中', txt:'相见时难别亦难，东风无力百花残。春蚕到死丝方尽，蜡炬成灰泪始干。晓镜但愁云鬓改，夜吟应觉月光寒。蓬山此去无多路，青鸟殷勤为探看。' },
+  { t:'行香子·树绕村庄', a:'秦观', d:'宋', lvl:'初中', txt:'树绕村庄，水满陂塘。倚东风，豪兴徜徉。小园几许，收尽春光。有桃花红，李花白，菜花黄。远远围墙，隐隐茅堂。飏青旗，流水桥旁。偶然乘兴，步过东冈。正莺儿啼，燕儿舞，蝶儿忙。' },
+  { t:'丑奴儿·书博山道中壁', a:'辛弃疾', d:'宋', lvl:'初中', txt:'少年不识愁滋味，爱上层楼。爱上层楼，为赋新词强说愁。而今识尽愁滋味，欲说还休。欲说还休，却道天凉好个秋。' },
+  { t:'十五从军征', a:'佚名', d:'汉', lvl:'初中', txt:'十五从军征，八十始得归。道逢乡里人，家中有阿谁？遥看是君家，松柏冢累累。兔从狗窦入，雉从梁上飞。中庭生旅谷，井上生旅葵。舂谷持作饭，采葵持作羹。羹饭一时熟，不知贻阿谁。出门东向看，泪落沾我衣。' },
+  { t:'南乡子·登京口北固亭有怀', a:'辛弃疾', d:'宋', lvl:'初中', txt:'何处望神州？满眼风光北固楼。千古兴亡多少事？悠悠。不尽长江滚滚流。年少万兜鍪，坐断东南战未休。天下英雄谁敌手？曹刘。生子当如孙仲谋。' },
+  { t:'南安军', a:'文天祥', d:'宋', lvl:'初中', txt:'梅花南北路，风雨湿征衣。出岭同谁出？归乡如不归！山河千古在，城郭一时非。饿死真吾志，梦中行采薇。' },
+  { t:'别云间', a:'夏完淳', d:'明', lvl:'初中', txt:'三年羁旅客，今日又南冠。无限山河泪，谁言天地宽！已知泉路近，欲别故乡难。毅魄归来日，灵旗空际看。' },
+  { t:'山坡羊·骊山怀古', a:'张养浩', d:'元', lvl:'初中', txt:'骊山四顾，阿房一炬，当时奢侈今何处？只见草萧疏，水萦纡。至今遗恨迷烟树。列国周齐秦汉楚。赢，都变做了土；输，都变做了土。' },
+  { t:'朝天子·咏喇叭', a:'王磐', d:'明', lvl:'初中', txt:'喇叭，唢呐，曲儿小腔儿大。官船来往乱如麻，全仗你抬声价。军听了军愁，民听了民怕。那里去辨甚么真共假？眼见的吹翻了这家，吹伤了那家，只吹的水尽鹅飞罢！' },
+  { t:'渔家傲·秋思', a:'范仲淹', d:'宋', lvl:'初中', txt:'塞下秋来风景异，衡阳雁去无留意。四面边声连角起，千嶂里，长烟落日孤城闭。浊酒一杯家万里，燕然未勒归无计。羌管悠悠霜满地，人不寐，将军白发征夫泪。' },
+  { t:'江城子·密州出猎', a:'苏轼', d:'宋', lvl:'初中', txt:'老夫聊发少年狂，左牵黄，右擎苍，锦帽貂裘，千骑卷平冈。为报倾城随太守，亲射虎，看孙郎。酒酣胸胆尚开张。鬓微霜，又何妨！持节云中，何日遣冯唐？会挽雕弓如满月，西北望，射天狼。' },
+  { t:'破阵子·为陈同甫赋壮词以寄之', a:'辛弃疾', d:'宋', lvl:'初中', txt:'醉里挑灯看剑，梦回吹角连营。八百里分麾下炙，五十弦翻塞外声，沙场秋点兵。马作的卢飞快，弓如霹雳弦惊。了却君王天下事，赢得生前身后名。可怜白发生！' },
+  { t:'满江红（小住京华）', a:'秋瑾', d:'清', lvl:'初中', txt:'小住京华，早又是中秋佳节。为篱下黄花开遍，秋容如拭。四面歌残终破楚，八年风味徒思浙。苦将侬强派作蛾眉，殊未屑！身不得，男儿列；心却比，男儿烈。算平生肝胆，因人常热。俗子胸襟谁识我？英雄末路当磨折。莽红尘何处觅知音？青衫湿！' },
+  { t:'定风波（莫听穿林打叶声）', a:'苏轼', d:'宋', lvl:'初中', txt:'莫听穿林打叶声，何妨吟啸且徐行。竹杖芒鞋轻胜马，谁怕？一蓑烟雨任平生。料峭春风吹酒醒，微冷，山头斜照却相迎。回首向来萧瑟处，归去，也无风雨也无晴。' },
+  { t:'临江仙·夜登小阁，忆洛中旧游', a:'陈与义', d:'宋', lvl:'初中', txt:'忆昔午桥桥上饮，坐中多是豪英。长沟流月去无声。杏花疏影里，吹笛到天明。二十余年如一梦，此身虽在堪惊。闲登小阁看新晴。古今多少事，渔唱起三更。' },
+  { t:'太常引·建康中秋夜为吕叔潜赋', a:'辛弃疾', d:'宋', lvl:'初中', txt:'一轮秋影转金波，飞镜又重磨。把酒问姮娥：被白发，欺人奈何？乘风好去，长空万里，直下看山河。斫去桂婆娑，人道是，清光更多。' },
+  { t:'浣溪沙（身向云山那畔行）', a:'纳兰性德', d:'清', lvl:'初中', txt:'身向云山那畔行，北风吹断马嘶声，深秋远塞若为情。一抹晚烟荒戍垒，半竿斜日旧关城。古今幽恨几时平？' },
+  { t:'咏雪', a:'刘义庆', d:'南朝宋', lvl:'初中', txt:'谢太傅寒雪日内集，与儿女讲论文义。俄而雪骤，公欣然曰：“白雪纷纷何所似？”兄子胡儿曰：“撒盐空中差可拟。”兄女曰：“未若柳絮因风起。”公大笑乐。即公大兄无奕女，左将军王凝之妻也。' },
+  { t:'陈太丘与友期行', a:'刘义庆', d:'南朝宋', lvl:'初中', txt:'陈太丘与友期行，期日中。过中不至，太丘舍去，去后乃至。元方时年七岁，门外戏。客问元方：“尊君在不？”答曰：“待君久不至，已去。”友人便怒曰：“非人哉！与人期行，相委而去。”元方曰：“君与家君期日中。日中不至，则是无信；对子骂父，则是无礼。”友人惭，下车引之。元方入门不顾。' },
+  { t:'《论语》十二章', a:'孔子及弟子', d:'先秦', lvl:'初中', txt:'子曰：“学而时习之，不亦说乎？有朋自远方来，不亦乐乎？人不知而不愠，不亦君子乎？”曾子曰：“吾日三省吾身：为人谋而不忠乎？与朋友交而不信乎？传不习乎？”子曰：“吾十有五而志于学，三十而立，四十而不惑，五十而知天命，六十而耳顺，七十而从心所欲，不逾矩。”子曰：“温故而知新，可以为师矣。”子曰：“学而不思则罔，思而不学则殆。”子曰：“知之者不如好之者，好之者不如乐之者。”子曰：“三人行，必有我师焉。择其善者而从之，其不善者而改之。”子在川上曰：“逝者如斯夫，不舍昼夜。”子曰：“三军可夺帅也，匹夫不可夺志也。”子夏曰：“博学而笃志，切问而近思，仁在其中矣。”' },
+  { t:'诫子书', a:'诸葛亮', d:'三国', lvl:'初中', txt:'夫君子之行，静以修身，俭以养德。非淡泊无以明志，非宁静无以致远。夫学须静也，才须学也，非学无以广才，非志无以成学。淫慢则不能励精，险躁则不能治性。年与时驰，意与日去，遂成枯落，多不接世，悲守穷庐，将复何及！' },
+  { t:'狼', a:'蒲松龄', d:'清', lvl:'初中', txt:'一屠晚归，担中肉尽，止有剩骨。途中两狼，缀行甚远。屠惧，投以骨。一狼得骨止，一狼仍从。复投之，后狼止而前狼又至。骨已尽矣，而两狼之并驱如故。屠大窘，恐前后受其敌。顾野有麦场，场主积薪其中，苫蔽成丘。屠乃奔倚其下，弛担持刀。狼不敢前，眈眈相向。少时，一狼径去，其一犬坐于前。久之，目似瞑，意暇甚。屠暴起，以刀劈狼首，又数刀毙之。方欲行，转视积薪后，一狼洞其中，意将隧入以攻其后也。身已半入，止露尻尾。屠自后断其股，亦毙之。乃悟前狼假寐，盖以诱敌。狼亦黠矣，而顷刻两毙，禽兽之变诈几何哉？止增笑耳。' },
+  { t:'穿井得一人', a:'佚名', d:'战国', lvl:'初中', txt:'宋之丁氏，家无井而出溉汲，常一人居外。及其家穿井，告人曰：“吾穿井得一人。”有闻而传之者：“丁氏穿井得一人。”国人道之，闻之于宋君。宋君令人问之于丁氏。丁氏对曰：“得一人之使，非得一人于井中也。”求闻之若此，不若无闻也。' },
+  { t:'杞人忧天', a:'佚名', d:'战国', lvl:'初中', txt:'杞国有人忧天地崩坠，身亡所寄，废寝食者。又有忧彼之所忧者，因往晓之，曰：“天，积气耳，亡处亡气。若屈伸呼吸，终日在天中行止，奈何忧崩坠乎？”其人曰：“天果积气，日月星宿，不当坠邪？”晓之者曰：“日月星宿，亦积气中之有光耀者，只使坠，亦不能有所中伤。”其人曰：“奈地坏何？”晓者曰：“地，积块耳，充塞四虚，亡处亡块。若躇步跐蹈，终日在地上行止，奈何忧其坏？”其人舍然大喜，晓之者亦舍然大喜。' },
+  { t:'孙权劝学', a:'司马光', d:'北宋', lvl:'初中', txt:'初，权谓吕蒙曰：“卿今当涂掌事，不可不学！”蒙辞以军中多务。权曰：“孤岂欲卿治经为博士邪！但当涉猎，见往事耳。卿言多务，孰若孤？孤常读书，自以为大有所益。”蒙乃始就学。及鲁肃过寻阳，与蒙论议，大惊曰：“卿今者才略，非复吴下阿蒙！”蒙曰：“士别三日，即更刮目相待，大兄何见事之晚乎！”肃遂拜蒙母，结友而别。' },
+  { t:'卖油翁', a:'欧阳修', d:'宋', lvl:'初中', txt:'陈康肃公善射，当世无双，公亦以此自矜。尝射于家圃，有卖油翁释担而立，睨之久而不去。见其发矢十中八九，但微颔之。康肃问曰：“汝亦知射乎？吾射不亦精乎？”翁曰：“无他，但手熟尔。”康肃忿然曰：“尔安敢轻吾射！”翁曰：“以我酌油知之。”乃取一葫芦置于地，以钱覆其口，徐以杓酌油沥之，自钱孔入，而钱不湿。因曰：“我亦无他，惟手熟尔。”康肃笑而遣之。' },
+  { t:'陋室铭', a:'刘禹锡', d:'唐', lvl:'初中', txt:'山不在高，有仙则名。水不在深，有龙则灵。斯是陋室，惟吾德馨。苔痕上阶绿，草色入帘青。谈笑有鸿儒，往来无白丁。可以调素琴，阅金经。无丝竹之乱耳，无案牍之劳形。南阳诸葛庐，西蜀子云亭。孔子云：何陋之有？' },
+  { t:'爱莲说', a:'周敦颐', d:'宋', lvl:'初中', txt:'水陆草木之花，可爱者甚蕃。晋陶渊明独爱菊。自李唐来，世人甚爱牡丹。予独爱莲之出淤泥而不染，濯清涟而不妖，中通外直，不蔓不枝，香远益清，亭亭净植，可远观而不可亵玩焉。予谓菊，花之隐逸者也；牡丹，花之富贵者也；莲，花之君子者也。噫！菊之爱，陶后鲜有闻。莲之爱，同予者何人？牡丹之爱，宜乎众矣！' },
+  { t:'河中石兽', a:'纪昀', d:'清', lvl:'初中', txt:'沧州南一寺临河干，山门圮于河，二石兽并沉焉。阅十余岁，僧募金重修，求二石兽于水中，竟不可得。以为顺流下矣，棹数小舟，曳铁钯，寻十余里，无迹。一讲学家设帐寺中，闻之笑曰：“尔辈不能究物理。是非木杮，岂能为暴涨携之去？乃石性坚重，沙性松浮，湮于沙上，渐沉渐深耳。沿河求之，不亦颠乎？”众服为确论。一老河兵闻之，又笑曰：“凡河中失石，当求之于上流。盖石性坚重，沙性松浮，水不能冲石，其反激之力，必于石下迎水处啮沙为坎穴，渐激渐深，至石之半，石必倒掷坎穴中。如是再啮，石又再转。转转不已，遂反溯流逆上矣。求之下流，固颠；求之地中，不更颠乎？”如其言，果得于数里外。然则天下之事，但知其一，不知其二者多矣，可据理臆断欤？' },
+  { t:'三峡', a:'郦道元', d:'北魏', lvl:'初中', txt:'自三峡七百里中，两岸连山，略无阙处。重岩叠嶂，隐天蔽日。自非亭午夜分，不见曦月。至于夏水襄陵，沿溯阻绝。或王命急宣，有时朝发白帝，暮到江陵，其间千二百里，虽乘奔御风，不以疾也。春冬之时，则素湍绿潭，回清倒影。绝巘多生怪柏，悬泉瀑布，飞漱其间，清荣峻茂，良多趣味。每至晴初霜旦，林寒涧肃，常有高猿长啸，属引凄异，空谷传响，哀转久绝。故渔者歌曰：“巴东三峡巫峡长，猿鸣三声泪沾裳。”' },
+  { t:'答谢中书书', a:'陶弘景', d:'南朝', lvl:'初中', txt:'山川之美，古来共谈。高峰入云，清流见底。两岸石壁，五色交辉。青林翠竹，四时俱备。晓雾将歇，猿鸟乱鸣；夕日欲颓，沉鳞竞跃。实是欲界之仙都。自康乐以来，未复有能与其奇者。' },
+  { t:'记承天寺夜游', a:'苏轼', d:'宋', lvl:'初中', txt:'元丰六年十月十二日夜，解衣欲睡，月色入户，欣然起行。念无与为乐者，遂至承天寺寻张怀民。怀民亦未寝，相与步于中庭。庭下如积水空明，水中藻、荇交横，盖竹柏影也。何夜无月？何处无竹柏？但少闲人如吾两人者耳。' },
+  { t:'与朱元思书', a:'吴均', d:'南朝', lvl:'初中', txt:'风烟俱净，天山共色。从流飘荡，任意东西。自富阳至桐庐一百许里，奇山异水，天下独绝。水皆缥碧，千丈见底。游鱼细石，直视无碍。急湍甚箭，猛浪若奔。夹岸高山，皆生寒树，负势竞上，互相轩邈，争高直指，千百成峰。泉水激石，泠泠作响；好鸟相鸣，嘤嘤成韵。蝉则千转不穷，猿则百叫无绝。鸢飞戾天者，望峰息心；经纶世务者，窥谷忘反。横柯上蔽，在昼犹昏；疏条交映，有时见日。' },
+  { t:'得道多助，失道寡助', a:'孟子', d:'战国', lvl:'初中', txt:'天时不如地利，地利不如人和。三里之城，七里之郭，环而攻之而不胜。夫环而攻之，必有得天时者矣，然而不胜者，是天时不如地利也。城非不高也，池非不深也，兵革非不坚利也，米粟非不多也，委而去之，是地利不如人和也。故曰：域民不以封疆之界，固国不以山溪之险，威天下不以兵革之利。得道者多助，失道者寡助。寡助之至，亲戚畔之；多助之至，天下顺之。以天下之所顺，攻亲戚之所畔，故君子有不战，战必胜矣。' },
+  { t:'富贵不能淫', a:'孟子', d:'战国', lvl:'初中', txt:'景春曰：“公孙衍、张仪岂不诚大丈夫哉？一怒而诸侯惧，安居而天下熄。”孟子曰：“是焉得为大丈夫乎？子未学礼乎？丈夫之冠也，父命之；女子之嫁也，母命之，往送之门，戒之曰：‘往之女家，必敬必戒，无违夫子！’以顺为正者，妾妇之道也。居天下之广居，立天下之正位，行天下之大道。得志，与民由之；不得志，独行其道。富贵不能淫，贫贱不能移，威武不能屈，此之谓大丈夫。”' },
+  { t:'生于忧患，死于安乐', a:'孟子', d:'战国', lvl:'初中', txt:'舜发于畎亩之中，傅说举于版筑之间，胶鬲举于鱼盐之中，管夷吾举于士，孙叔敖举于海，百里奚举于市。故天将降大任于是人也，必先苦其心志，劳其筋骨，饿其体肤，空乏其身，行拂乱其所为，所以动心忍性，曾益其所不能。人恒过，然后能改；困于心，衡于虑，而后作；征于色，发于声，而后喻。入则无法家拂士，出则无敌国外患者，国恒亡。然后知生于忧患而死于安乐也。' },
+  { t:'愚公移山', a:'列御寇', d:'战国', lvl:'初中', txt:'太行、王屋二山，方七百里，高万仞，本在冀州之南，河阳之北。北山愚公者，年且九十，面山而居。惩山北之塞，出入之迂也，聚室而谋曰：“吾与汝毕力平险，指通豫南，达于汉阴，可乎？”杂然相许。其妻献疑曰：“以君之力，曾不能损魁父之丘，如太行、王屋何？且焉置土石？”杂曰：“投诸渤海之尾，隐土之北。”遂率子孙荷担者三夫，叩石垦壤，箕畚运于渤海之尾。邻人京城氏之孀妻有遗男，始龀，跳往助之。寒暑易节，始一反焉。河曲智叟笑而止之曰：“甚矣，汝之不惠！以残年余力，曾不能毁山之一毛，其如土石何？”北山愚公长息曰：“汝心之固，固不可彻，曾不若孀妻弱子。虽我之死，有子存焉；子又生孙，孙又生子；子又有子，子又有孙；子子孙孙无穷匮也，而山不加增，何苦而不平？”河曲智叟亡以应。操蛇之神闻之，惧其不已也，告之于帝。帝感其诚，命夸娥氏二子负二山，一厝朔东，一厝雍南。自此，冀之南，汉之阴，无陇断焉。' },
+  { t:'周亚夫军细柳', a:'司马迁', d:'西汉', lvl:'初中', txt:'文帝之后六年，匈奴大入边。乃以宗正刘礼为将军，军霸上；祝兹侯徐厉为将军，军棘门；以河内守亚夫为将军，军细柳：以备胡。上自劳军。至霸上及棘门军，直驰入，将以下骑送迎。已而之细柳军，军士吏被甲，锐兵刃，彀弓弩，持满。天子先驱至，不得入。先驱曰：“天子且至！”军门都尉曰：“将军令曰：‘军中闻将军令，不闻天子之诏。’”居无何，上至，又不得入。于是上乃使使持节诏将军：“吾欲入劳军。”亚夫乃传言开壁门。壁门士吏谓从属车骑曰：“将军约，军中不得驱驰。”于是天子乃按辔徐行。至营，将军亚夫持兵揖曰：“介胄之士不拜，请以军礼见。”天子为动，改容式车。使人称谢：“皇帝敬劳将军。”成礼而去。既出军门，群臣皆惊。文帝曰：“嗟乎，此真将军矣！曩者霸上、棘门军，若儿戏耳，其将固可袭而虏也。至于亚夫，可得而犯邪！”称善者久之。' },
+  { t:'桃花源记', a:'陶渊明', d:'晋', lvl:'初中', txt:'晋太元中，武陵人捕鱼为业。缘溪行，忘路之远近。忽逢桃花林，夹岸数百步，中无杂树，芳草鲜美，落英缤纷。渔人甚异之。复前行，欲穷其林。林尽水源，便得一山，山有小口，仿佛若有光。便舍船，从口入。初极狭，才通人。复行数十步，豁然开朗。土地平旷，屋舍俨然，有良田、美池、桑竹之属。阡陌交通，鸡犬相闻。其中往来种作，男女衣着，悉如外人。黄发垂髫，并怡然自乐。见渔人，乃大惊，问所从来。具答之。便要还家，设酒杀鸡作食。村中闻有此人，咸来问讯。自云先世避秦时乱，率妻子邑人来此绝境，不复出焉，遂与外人间隔。问今是何世，乃不知有汉，无论魏晋。此人一一为具言所闻，皆叹惋。余人各复延至其家，皆出酒食。停数日，辞去。此中人语云：“不足为外人道也。”既出，得其船，便扶向路，处处志之。及郡下，诣太守，说如此。太守即遣人随其往，寻向所志，遂迷，不复得路。南阳刘子骥，高尚士也，闻之，欣然规往。未果，寻病终。后遂无问津者。' },
+  { t:'小石潭记', a:'柳宗元', d:'唐', lvl:'初中', txt:'从小丘西行百二十步，隔篁竹，闻水声，如鸣珮环，心乐之。伐竹取道，下见小潭，水尤清冽。全石以为底，近岸，卷石底以出，为坻，为屿，为嵁，为岩。青树翠蔓，蒙络摇缀，参差披拂。潭中鱼可百许头，皆若空游无所依，日光下澈，影布石上。佁然不动，俶尔远逝，往来翕忽，似与游者相乐。潭西南而望，斗折蛇行，明灭可见。其岸势犬牙差互，不可知其源。坐潭上，四面竹树环合，寂寥无人，凄神寒骨，悄怆幽邃。以其境过清，不可久居，乃记之而去。同游者：吴武陵，龚古，余弟宗玄。隶而从者，崔氏二小生：曰恕己，曰奉壹。' },
+  { t:'核舟记', a:'魏学洢', d:'明', lvl:'初中', txt:'明有奇巧人曰王叔远，能以径寸之木，为宫室、器皿、人物，以至鸟兽、木石，罔不因势象形，各具情态。尝贻余核舟一，盖大苏泛赤壁云。舟首尾长约八分有奇，高可二黍许。中轩敞者为舱，箬篷覆之。旁开小窗，左右各四，共八扇。启窗而观，雕栏相望焉。闭之，则右刻“山高月小，水落石出”，左刻“清风徐来，水波不兴”，石青糁之。……通计一舟，为人五；为窗八；为箬篷，为楫，为炉，为壶，为手卷，为念珠各一；对联、题名并篆文，为字共三十有四。而计其长曾不盈寸。盖简桃核修狭者为之。嘻，技亦灵怪矣哉！' },
+  { t:'北冥有鱼', a:'庄子', d:'战国', lvl:'初中', txt:'北冥有鱼，其名为鲲。鲲之大，不知其几千里也。化而为鸟，其名为鹏。鹏之背，不知其几千里也；怒而飞，其翼若垂天之云。是鸟也，海运则将徙于南冥。南冥者，天池也。' },
+  { t:'庄子与惠子游于濠梁之上', a:'庄子', d:'战国', lvl:'初中', txt:'庄子与惠子游于濠梁之上。庄子曰：“鲦鱼出游从容，是鱼之乐也。”惠子曰：“子非鱼，安知鱼之乐？”庄子曰：“子非我，安知我不知鱼之乐？”惠子曰：“我非子，固不知子矣；子固非鱼也，子之不知鱼之乐，全矣！”庄子曰：“请循其本。子曰‘汝安知鱼乐’云者，既已知吾知之而问我，我知之濠上也。”' },
+  { t:'虽有嘉肴', a:'佚名', d:'西汉', lvl:'初中', txt:'虽有嘉肴，弗食，不知其旨也；虽有至道，弗学，不知其善也。是故学然后知不足，教然后知困。知不足，然后能自反也；知困，然后能自强也。故曰：教学相长也。《兑命》曰“学学半”，其此之谓乎！' },
+  { t:'大道之行也', a:'佚名', d:'西汉', lvl:'初中', txt:'大道之行也，天下为公。选贤与能，讲信修睦。故人不独亲其亲，不独子其子，使老有所终，壮有所用，幼有所长，矜、寡、孤、独、废疾者皆有所养，男有分，女有归。货恶其弃于地也，不必藏于己；力恶其不出于身也，不必为己。是故谋闭而不兴，盗窃乱贼而不作，故外户而不闭。是谓大同。' },
+  { t:'马说', a:'韩愈', d:'唐', lvl:'初中', txt:'世有伯乐，然后有千里马。千里马常有，而伯乐不常有。故虽有名马，祗辱于奴隶人之手，骈死于槽枥之间，不以千里称也。马之千里者，一食或尽粟一石。食马者不知其能千里而食也。是马也，虽有千里之能，食不饱，力不足，才美不外见，且欲与常马等不可得，安求其能千里也？策之不以其道，食之不能尽其材，鸣之而不能通其意，执策而临之，曰：“天下无马！”呜呼！其真无马邪？其真不知马也！' },
+  { t:'岳阳楼记', a:'范仲淹', d:'宋', lvl:'初中', txt:'庆历四年春，滕子京谪守巴陵郡。越明年，政通人和，百废具兴。乃重修岳阳楼，增其旧制，刻唐贤今人诗赋于其上。属予作文以记之。予观夫巴陵胜状，在洞庭一湖。衔远山，吞长江，浩浩汤汤，横无际涯；朝晖夕阴，气象万千。此则岳阳楼之大观也，前人之述备矣。然则北通巫峡，南极潇湘，迁客骚人，多会于此，览物之情，得无异乎？……嗟夫！予尝求古仁人之心，或异二者之为，何哉？不以物喜，不以己悲，居庙堂之高则忧其民，处江湖之远则忧其君。是进亦忧，退亦忧。然则何时而乐耶？其必曰“先天下之忧而忧，后天下之乐而乐”乎！噫！微斯人，吾谁与归？时六年九月十五日。' },
+  { t:'醉翁亭记', a:'欧阳修', d:'宋', lvl:'初中', txt:'环滁皆山也。其西南诸峰，林壑尤美。望之蔚然而深秀者，琅琊也。山行六七里，渐闻水声潺潺而泻出于两峰之间者，酿泉也。峰回路转，有亭翼然临于泉上者，醉翁亭也。作亭者谁？山之僧智仙也。名之者谁？太守自谓也。太守与客来饮于此，饮少辄醉，而年又最高，故自号曰醉翁也。醉翁之意不在酒，在乎山水之间也。山水之乐，得之心而寓之酒也。……已而夕阳在山，人影散乱，太守归而宾客从也。树林阴翳，鸣声上下，游人去而禽鸟乐也。然而禽鸟知山林之乐，而不知人之乐；人知从太守游而乐，而不知太守之乐其乐也。醉能同其乐，醒能述以文者，太守也。太守谓谁？庐陵欧阳修也。' },
+  { t:'湖心亭看雪', a:'张岱', d:'明', lvl:'初中', txt:'崇祯五年十二月，余住西湖。大雪三日，湖中人鸟声俱绝。是日更定矣，余拏一小舟，拥毳衣炉火，独往湖心亭看雪。雾凇沆砀，天与云与山与水，上下一白。湖上影子，惟长堤一痕、湖心亭一点、与余舟一芥、舟中人两三粒而已。到亭上，有两人铺毡对坐，一童子烧酒炉正沸。见余大喜曰：“湖中焉得更有此人！”拉余同饮。余强饮三大白而别。问其姓氏，是金陵人，客此。及下船，舟子喃喃曰：“莫说相公痴，更有痴似相公者！”' },
+  { t:'鱼我所欲也', a:'孟子', d:'战国', lvl:'初中', txt:'鱼，我所欲也；熊掌，亦我所欲也。二者不可得兼，舍鱼而取熊掌者也。生，亦我所欲也；义，亦我所欲也。二者不可得兼，舍生而取义者也。生亦我所欲，所欲有甚于生者，故不为苟得也；死亦我所恶，所恶有甚于死者，故患有所不辟也。如使人之所欲莫甚于生，则凡可以得生者何不用也？使人之所恶莫甚于死者，则凡可以辟患者何不为也？由是则生而有不用也，由是则可以辟患而有不为也。是故所欲有甚于生者，所恶有甚于死者。非独贤者有是心也，人皆有之，贤者能勿丧耳。……一箪食，一豆羹，得之则生，弗得则死。呼尔而与之，行道之人弗受；蹴尔而与之，乞人不屑也。万钟则不辩礼义而受之，万钟于我何加焉！为宫室之美，妻妾之奉，所识穷乏者得我与？乡为身死而不受，今为宫室之美为之；乡为身死而不受，今为妻妾之奉为之；乡为身死而不受，今为所识穷乏者得我而为之：是亦不可以已乎？此之谓失其本心。' },
+  { t:'唐雎不辱使命', a:'佚名', d:'战国', lvl:'初中', txt:'秦王使人谓安陵君曰：“寡人欲以五百里之地易安陵，安陵君其许寡人！”安陵君曰：“大王加惠，以大易小，甚善；虽然，受地于先王，愿终守之，弗敢易！”秦王不说。……秦王色挠，长跪而谢之曰：“先生坐！何至于此！寡人谕矣：夫韩、魏灭亡，而安陵以五十里之地存者，徒以有先生也。”' },
+  { t:'送东阳马生序', a:'宋濂', d:'明', lvl:'初中', txt:'余幼时即嗜学。家贫，无从致书以观，每假借于藏书之家，手自笔录，计日以还。天大寒，砚冰坚，手指不可屈伸，弗之怠。录毕，走送之，不敢稍逾约。以是人多以书假余，余因得遍观群书。既加冠，益慕圣贤之道。又患无硕师名人与游，尝趋百里外，从乡之先达执经叩问。……其业有不精、德有不成者，非天质之卑，则心不若余之专耳，岂他人之过哉？' },
+  { t:'曹刿论战', a:'左丘明', d:'春秋', lvl:'初中', txt:'十年春，齐师伐我。公将战，曹刿请见。其乡人曰：“肉食者谋之，又何间焉？”刿曰：“肉食者鄙，未能远谋。”乃入见。问：“何以战？”公曰：“衣食所安，弗敢专也，必以分人。”对曰：“小惠未遍，民弗从也。”公曰：“牺牲玉帛，弗敢加也，必以信。”对曰：“小信未孚，神弗福也。”公曰：“小大之狱，虽不能察，必以情。”对曰：“忠之属也。可以一战。战则请从。”……既克，公问其故。对曰：“夫战，勇气也。一鼓作气，再而衰，三而竭。彼竭我盈，故克之。夫大国，难测也，惧有伏焉。吾视其辙乱，望其旗靡，故逐之。”' },
+  { t:'邹忌讽齐王纳谏', a:'佚名', d:'战国', lvl:'初中', txt:'邹忌修八尺有余，而形貌昳丽。朝服衣冠，窥镜，谓其妻曰：“我孰与城北徐公美？”其妻曰：“君美甚，徐公何能及君也！”……燕、赵、韩、魏闻之，皆朝于齐。此所谓战胜于朝廷。' },
+  { t:'陈涉世家（节选）', a:'司马迁', d:'西汉', lvl:'初中', txt:'陈胜者，阳城人也，字涉。吴广者，阳夏人也，字叔。陈涉少时，尝与人佣耕，辍耕之垄上，怅恨久之，曰：“苟富贵，无相忘。”佣者笑而应曰：“若为佣耕，何富贵也？”陈涉太息曰：“嗟乎！燕雀安知鸿鹄之志哉！”……三老、豪杰皆曰：“将军身被坚执锐，伐无道，诛暴秦，复立楚国之社稷，功宜为王。”陈涉乃立为王，号为张楚。' },
+  { t:'出师表', a:'诸葛亮', d:'三国', lvl:'初中', txt:'先帝创业未半而中道崩殂，今天下三分，益州疲弊，此诚危急存亡之秋也。然侍卫之臣不懈于内，忠志之士忘身于外者，盖追先帝之殊遇，欲报之于陛下也。诚宜开张圣听，以光先帝遗德，恢弘志士之气，不宜妄自菲薄，引喻失义，以塞忠谏之路也。……亲贤臣，远小人，此先汉所以兴隆也；亲小人，远贤臣，此后汉所以倾颓也。……臣本布衣，躬耕于南阳，苟全性命于乱世，不求闻达于诸侯。先帝不以臣卑鄙，猥自枉屈，三顾臣于草庐之中，咨臣以当世之事，由是感激，遂许先帝以驱驰。……今当远离，临表涕零，不知所言。' }
+];
+
+/* 体裁映射：5=五言、7=七言（按句对齐换行）；0=词/曲/古文/歌行（不换行） */
+const METER = {
+  '咏鹅':'5',
+  '江南':'0',
+  '画':'5',
+  '悯农（其二）':'5',
+  '古朗月行（节选）':'5',
+  '风':'5',
+  '春晓':'5',
+  '赠汪伦':'7',
+  '静夜思':'5',
+  '寻隐者不遇':'5',
+  '池上':'5',
+  '小池':'7',
+  '画鸡':'7',
+  '梅花':'5',
+  '小儿垂钓':'7',
+  '登鹳雀楼':'5',
+  '望庐山瀑布':'7',
+  '江雪':'5',
+  '夜宿山寺':'5',
+  '敕勒歌':'0',
+  '村居':'7',
+  '咏柳':'7',
+  '赋得古原草送别（节选）':'5',
+  '晓出净慈寺送林子方':'7',
+  '绝句':'7',
+  '悯农（其一）':'5',
+  '舟夜书所见':'5',
+  '所见':'5',
+  '山行':'7',
+  '赠刘景文':'7',
+  '夜书所见':'7',
+  '望天门山':'7',
+  '饮湖上初晴后雨':'7',
+  '望洞庭':'7',
+  '早发白帝城':'7',
+  '采莲曲':'7',
+  '绝句（迟日）':'5',
+  '惠崇春江晚景':'7',
+  '三衢道中':'7',
+  '忆江南':'0',
+  '元日':'7',
+  '清明':'7',
+  '九月九日忆山东兄弟':'7',
+  '滁州西涧':'7',
+  '大林寺桃花':'7',
+  '鹿柴':'5',
+  '暮江吟':'7',
+  '题西林壁':'7',
+  '雪梅':'7',
+  '嫦娥':'7',
+  '出塞':'7',
+  '凉州词':'7',
+  '夏日绝句':'5',
+  '别董大':'7',
+  '宿新市徐公店':'7',
+  '四时田园杂兴（其二十五）':'7',
+  '清平乐·村居':'0',
+  '卜算子·咏梅':'0',
+  '蜂':'7',
+  '独坐敬亭山':'5',
+  '芙蓉楼送辛渐':'7',
+  '塞下曲':'5',
+  '墨梅':'7',
+  '蝉':'5',
+  '乞巧':'7',
+  '示儿':'7',
+  '题临安邸':'7',
+  '己亥杂诗':'7',
+  '山居秋暝':'5',
+  '枫桥夜泊':'7',
+  '长相思':'0',
+  '渔歌子':'0',
+  '观书有感（其一）':'7',
+  '观书有感（其二）':'7',
+  '四时田园杂兴（其三十一）':'7',
+  '稚子弄冰':'7',
+  '村晚':'7',
+  '鸟鸣涧':'5',
+  '凉州词（黄河）':'7',
+  '送元二使安西':'7',
+  '秋夜将晓出篱门迎凉有感':'7',
+  '黄鹤楼送孟浩然之广陵':'7',
+  '寒菊':'7',
+  '乡村四月':'7',
+  '宿建德江':'5',
+  '六月二十七日望湖楼醉书':'7',
+  '西江月·夜行黄沙道中':'0',
+  '过故人庄':'5',
+  '七律·长征':'7',
+  '菩萨蛮·大柏地':'0',
+  '春日':'7',
+  '回乡偶书':'7',
+  '浪淘沙（其一）':'7',
+  '江南春':'7',
+  '书湖阴先生壁':'7',
+  '寒食':'7',
+  '迢迢牵牛星':'5',
+  '十五夜望月':'7',
+  '长歌行':'5',
+  '马诗':'5',
+  '石灰吟':'7',
+  '竹石':'7',
+  '采薇（节选）':'0',
+  '春夜喜雨':'5',
+  '闻官军收河南河北':'7',
+  '早春呈水部张十八员外':'7',
+  '江上渔者':'5',
+  '泊船瓜洲':'7',
+  '游园不值':'7',
+  '卜算子·送鲍浩然之浙东':'0',
+  '浣溪沙':'0',
+  '清平乐':'0',
+  '人之初（三字经）':'0',
+  '司马光':'0',
+  '守株待兔':'0',
+  '精卫填海':'0',
+  '王戎不取道旁李':'0',
+  '囊萤夜读':'0',
+  '铁杵成针':'0',
+  '古人谈读书':'0',
+  '少年中国说（节选）':'0',
+  '自相矛盾':'0',
+  '杨氏之子':'0',
+  '伯牙鼓琴':'0',
+  '书戴嵩画牛':'0',
+  '学弈':'0',
+  '两小儿辩日':'0',
+  '观沧海':'0',
+  '次北固山下':'5',
+  '天净沙·秋思':'0',
+  '闻王昌龄左迁龙标遥有此寄':'7',
+  '使至塞上':'5',
+  '渡荆门送别':'5',
+  '钱塘湖春行':'7',
+  '饮酒（其五）':'5',
+  '行路难（其一）':'7',
+  '望岳':'5',
+  '春望':'5',
+  '登飞来峰':'7',
+  '赤壁':'7',
+  '过零丁洋':'7',
+  '山坡羊·潼关怀古':'0',
+  '酬乐天扬州初逢席上见赠':'7',
+  '己亥杂诗（其五）':'7',
+  '茅屋为秋风所破歌':'7',
+  '白雪歌送武判官归京':'7',
+  '峨眉山月歌':'7',
+  '江南逢李龟年':'7',
+  '行军九日思长安故园':'5',
+  '夜上受降城闻笛':'7',
+  '秋词（其一）':'7',
+  '夜雨寄北':'7',
+  '十一月四日风雨大作（其二）':'7',
+  '潼关':'7',
+  '木兰诗':'0',
+  '竹里馆':'5',
+  '春夜洛城闻笛':'7',
+  '逢入京使':'7',
+  '晚春':'7',
+  '登幽州台歌':'0',
+  '游山西村':'7',
+  '泊秦淮':'7',
+  '贾生':'7',
+  '过松源晨炊漆公店（其五）':'7',
+  '约客':'7',
+  '野望':'5',
+  '黄鹤楼':'7',
+  '庭中有奇树':'5',
+  '龟虽寿':'0',
+  '赠从弟（其二）':'5',
+  '梁甫行':'5',
+  '雁门太守行':'7',
+  '渔家傲（天接云涛连晓雾）':'0',
+  '浣溪沙（一曲新词酒一杯）':'0',
+  '采桑子（轻舟短棹西湖好）':'0',
+  '相见欢（金陵城上西楼）':'0',
+  '如梦令（常记溪亭日暮）':'0',
+  '关雎':'0',
+  '蒹葭':'0',
+  '式微':'0',
+  '子衿':'0',
+  '送杜少府之任蜀州':'5',
+  '望洞庭湖赠张丞相':'5',
+  '石壕吏':'5',
+  '卖炭翁':'0',
+  '题破山寺后禅院':'5',
+  '送友人':'5',
+  '卜算子·黄州定慧院寓居作':'0',
+  '卜算子·咏梅（陆游）':'0',
+  '沁园春·雪':'0',
+  '水调歌头（明月几时有）':'0',
+  '月夜忆舍弟':'5',
+  '长沙过贾谊宅':'7',
+  '左迁至蓝关示侄孙湘':'7',
+  '商山早行':'5',
+  '咸阳城东楼':'7',
+  '无题':'7',
+  '行香子·树绕村庄':'0',
+  '丑奴儿·书博山道中壁':'0',
+  '十五从军征':'5',
+  '南乡子·登京口北固亭有怀':'0',
+  '南安军':'5',
+  '别云间':'5',
+  '山坡羊·骊山怀古':'0',
+  '朝天子·咏喇叭':'0',
+  '渔家傲·秋思':'0',
+  '江城子·密州出猎':'0',
+  '破阵子·为陈同甫赋壮词以寄之':'0',
+  '满江红（小住京华）':'0',
+  '定风波（莫听穿林打叶声）':'0',
+  '临江仙·夜登小阁，忆洛中旧游':'0',
+  '太常引·建康中秋夜为吕叔潜赋':'0',
+  '浣溪沙（身向云山那畔行）':'0',
+  '咏雪':'0',
+  '陈太丘与友期行':'0',
+  '《论语》十二章':'0',
+  '诫子书':'0',
+  '狼':'0',
+  '穿井得一人':'0',
+  '杞人忧天':'0',
+  '孙权劝学':'0',
+  '卖油翁':'0',
+  '陋室铭':'0',
+  '爱莲说':'0',
+  '河中石兽':'0',
+  '三峡':'0',
+  '答谢中书书':'0',
+  '记承天寺夜游':'0',
+  '与朱元思书':'0',
+  '得道多助，失道寡助':'0',
+  '富贵不能淫':'0',
+  '生于忧患，死于安乐':'0',
+  '愚公移山':'0',
+  '周亚夫军细柳':'0',
+  '桃花源记':'0',
+  '小石潭记':'0',
+  '核舟记':'0',
+  '北冥有鱼':'0',
+  '庄子与惠子游于濠梁之上':'0',
+  '虽有嘉肴':'0',
+  '大道之行也':'0',
+  '马说':'0',
+  '岳阳楼记':'0',
+  '醉翁亭记':'0',
+  '湖心亭看雪':'0',
+  '鱼我所欲也':'0',
+  '唐雎不辱使命':'0',
+  '送东阳马生序':'0',
+  '曹刿论战':'0',
+  '邹忌讽齐王纳谏':'0',
+  '陈涉世家（节选）':'0',
+  '出师表':'0'
+};
+
+/* 按体裁分行：五/七言按“句子”拆成独立行；词曲古文返回整段（不换行） */
+function poemLines(p){
+  const meter = METER[p.t] || '0';
+  if(meter==='5' || meter==='7'){
+    const segs = (p.txt.match(/[^，。？！；、]+[，。？！；]?/g) || [p.txt]);
+    return segs.map(l=>escapeHtml(l.trim())).join('<br>');
+  }
+  return escapeHtml(p.txt); // 词/曲/古文/歌行：不强制换行
+}
+function isMetered(p){ const m=METER[p.t]||'0'; return m==='5'||m==='7'; }
+
+/* ---------- 按日期确定性的“抽签”（同一天结果固定，第二天不同） ---------- */
+function hashStr(s){ let h=2166136261; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
+function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+function seededShuffle(arr, rnd){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+
+/* 读/写某任务的古诗记忆 */
+function loadMem(taskId){ return load(LS_MEM_PREFIX+taskId, {}); }
+function saveMem(taskId, mem){ save(LS_MEM_PREFIX+taskId, mem); }
+/* 跳过：还没学到的诗暂不抽；可按任务独立存储 */
+function loadSkip(taskId){ return load(LS_SKIP_PREFIX+taskId, {}); }
+function saveSkip(taskId, s){ save(LS_SKIP_PREFIX+taskId, s); }
+function toggleSkip(taskId, title, on){ const s=loadSkip(taskId); if(on){ s[title]=true; } else { delete s[title]; } saveSkip(taskId, s); }
+
+/* 判断某首诗今天是否“到期”该复习（艾宾浩斯：距上次背诵已过间隔天数） */
+function isDue(rec, today){
+  if(!rec) return true;                       // 从未背过 → 优先抽取
+  const days = REVIEW_DAYS[Math.min(rec.stage-1, REVIEW_DAYS.length-1)];
+  const next = parseDate(rec.last); next.setDate(next.getDate()+days);
+  return today >= next;                       // 今天 >= 上次背诵 + 间隔 → 到期
+}
+
+/* 按 学段过滤 + 艾宾浩斯曲线 抽取 n 首：优先“到期”的，不够再补“最近背得最久”的。
+   已打「已掌握」标签的诗不再抽取。考前复习期：只从已背过的诗中抽（考前回顾），新诗暂缓 */
+function prepLeft(task, dateStr){
+  if(!task || !task.prepEnabled || !task.prepExamDate) return null;
+  const exam = parseDate(task.prepExamDate);
+  const days = Math.round((exam - parseDate(dateStr)) / 86400000);
+  if(days <= 0 || days > (task.prepDays||7)) return null; // 已过考试/尚未进入复习期
+  return days; // 距考试天数（>0）
+}
+function drawPoems(taskId, level, dateStr, n){
+  const mem = loadMem(taskId);
+  const skip = loadSkip(taskId);
+  const task = plans.find(x=>x.id===taskId);
+  const left = prepLeft(task, dateStr);
+  let pool = POEMS.filter(p =>
+    (!level || level==='全部' ? true : p.lvl===level)
+    && !(mem[p.t] && mem[p.t].master)   // 排除已掌握/免背
+    && !(skip[p.t]));                   // 排除已跳过（还没学到）
+  if(left !== null){
+    pool = pool.filter(p => mem[p.t] && mem[p.t].stage>=1); // 复习期只抽已背过的
+  }
+  const today = parseDate(dateStr);
+  const rnd = mulberry32(hashStr(dateStr+'|'+taskId+'|'+pool.length+(left!==null?'|prep':'')));
+  const due = seededShuffle(pool.filter(p=>isDue(mem[p.t], today)), rnd);
+  const notDue = pool.filter(p=>!isDue(mem[p.t], today))
+    .sort((a,b)=> ((mem[a.t]&&mem[a.t].last)||'').localeCompare((mem[b.t]&&mem[b.t].last)||'')); // 最久未背的在前
+  const out = due.slice(0,n);
+  if(out.length<n){ out.push(...seededShuffle(notDue,rnd).slice(0, n-out.length)); }
+  return out;
+}
+
+/* 某学段的背诵进度统计 */
+function poemProgress(taskId, level){
+  const pool = POEMS.filter(p => !level || level==='全部' ? true : p.lvl===level);
+  const mem = loadMem(taskId);
+  let done=0, mastered=0;
+  pool.forEach(p=>{
+    const r = mem[p.t];
+    if(r && r.stage>=1) done++;   // 背过一次即算“已背”
+    if(r && r.master) mastered++; // 打了“已掌握”标签
+  });
+  return { total:pool.length, done, mastered, todo:pool.length - done };
+}
+
+/* 设置某首诗的“已掌握/免背”标签 */
+function setMastered(taskId, title, val){
+  const mem = loadMem(taskId);
+  if(!mem[title]){ mem[title] = { stage:0, last:'', master:val }; }
+  else { mem[title].master = val; }
+  saveMem(taskId, mem);
+}
+
+/* 背默完成后，把已背的诗词写入记忆（推进到下一复习阶段） */
+function commitRecite(taskId, dateStr, titles){
+  const mem = loadMem(taskId);
+  titles.forEach(t=>{
+    const cur = mem[t];
+    if(!cur){ mem[t] = { stage:1, last:dateStr }; }
+    else { mem[t] = { stage:Math.min(cur.stage+1, REVIEW_DAYS.length), last:dateStr }; }
+  });
+  saveMem(taskId, mem);
+}
+
+/* 返回某首诗的复习状态文案 */
+function poemStateText(rec){
+  if(!rec) return '新诗·待背';
+  const days = REVIEW_DAYS[Math.min(rec.stage-1, REVIEW_DAYS.length-1)];
+  return `已背${rec.stage}次·${days}天后复习`;
+}
+
+/* ---------- 工具函数 ---------- */
+function $(s){ return document.querySelector(s); }
+// 读取 localStorage 的 JSON
+function load(key, def){ try{ const v=localStorage.getItem(key); return v?JSON.parse(v):def; }catch(e){ return def; } }
+function save(key, val){
+  localStorage.setItem(key, JSON.stringify(val));
+}
+
+/* 日期格式化：Date -> 'YYYY-MM-DD' */
+function fmt(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+// 'YYYY-MM-DD' -> Date（本地时区安全）
+function parseDate(s){ const p=s.split('-'); return new Date(+p[0],+p[1]-1,+p[2]); }
+
+/* 生成唯一 id */
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+/* 获取某日期所在周的周一 */
+function mondayOf(date){
+  const d=new Date(date.getFullYear(),date.getMonth(),date.getDate());
+  const day=(d.getDay()+6)%7; // 周一=0
+  d.setDate(d.getDate()-day);
+  return d;
+}
+// 计算某任务某天的“星数”
+function starOf(taskId, dateStr){ return (records[dateStr]||{})[taskId] || 0; }
+
+/* 简单 HTML 转义 */
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------- 数据状态 ---------- */
+let subjects = load(LS_SUBJECTS, null);     // 课程列表
+let plans = load(LS_PLANS, null);           // 任务列表
+let records = load(LS_RECORDS, {});         // 打卡记录
+let reviews = load(LS_REVIEWS, []);         // 已保存的周复盘
+
+/* 按 id 查课程；找不到回退“其他” */
+function getSubject(id){
+  return subjects.find(x=>x.id===id) || subjects.find(x=>x.name==='其他') || subjects[0];
+}
+
+/* 迁移兼容：旧数据任务用 subject(名称)，新数据用 subjectId(课程id) */
+function migrateTask(task){
+  let changed = false;
+  if(!task.subjectId){
+    const s = subjects.find(x=>x.name===task.subject);
+    task.subjectId = s ? s.id : (subjects.find(x=>x.name==='其他')||subjects[0]).id;
+    changed = true;
+  }
+  if(!task.emoji){ task.emoji = (getSubject(task.subjectId)||{}).emoji; changed = true; }
+  // 古诗文抽签背默模式：未设置时，任务名含“古诗文”自动开启
+  if(task.poem===undefined){
+    task.poem = /古诗文/.test(task.name || '');
+    changed = true;
+  }
+  if(task.level===undefined){ task.level = '全部'; changed = true; } // 背默学段：全部/小学/初中
+  return changed;
+}
+
+/* 首次运行注入默认课程 + 示例任务 */
+function seedAll(){
+  subjects = DEFAULT_SUBJECTS.map(s=>({...s}));
+  const byName = {}; subjects.forEach(s=>byName[s.name]=s.id);
+  plans = [
+    { id:uid(), name:'英语单词背诵', subjectId:byName['英语'], type:'weekly', target:4 },
+    { id:uid(), name:'数学错题整理', subjectId:byName['数学'], type:'daily' },
+    { id:uid(), name:'语文古诗文复习', subjectId:byName['语文'], type:'daily', poem:true, level:'全部' },
+  ];
+  plans.forEach(migrateTask);
+  persistSubjects(); persistPlans();
+}
+if(!subjects || !subjects.length){ seedAll(); }
+if(!plans || !plans.length){ seedAll(); }
+// 迁移并持久化（例如给旧“古诗文”任务自动开启背默模式）
+let migratedAny = false;
+plans.forEach(t=>{ if(migrateTask(t)) migratedAny = true; });
+if(migratedAny) persistPlans();
+
+function persistSubjects(){ save(LS_SUBJECTS, subjects); }
+function persistPlans(){ save(LS_PLANS, plans); }
+function persistRecords(){ save(LS_RECORDS, records); }
+
+/* ---------- 视图状态 ---------- */
+let curDate = new Date();      // 今日视图当前选中日期
+let weekAnchor = new Date();   // 周统计当前查看的周
+
+/* ============================================================
+   视图切换
+   ============================================================ */
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    const v = tab.dataset.view;
+    $('#viewToday').style.display = v==='today' ? '' : 'none';
+    $('#viewWeek').style.display  = v==='week' ? '' : 'none';
+    $('#pageTitle').textContent = v==='today' ? '今日打卡' : '周统计';
+    if(v==='today'){ renderDateStrip(); renderTodayTasks(); }
+    else { renderWeek(); }
+  });
+});
+
+/* ============================================================
+   今日视图
+   ============================================================ */
+function renderDateStrip(){
+  const strip = $('#dateStrip');
+  strip.innerHTML = '';
+  const monday = mondayOf(curDate);
+  for(let i=0;i<14;i++){
+    const d = new Date(monday); d.setDate(d.getDate()+i);
+    const ds = fmt(d);
+    const isToday = ds===fmt(new Date());
+    const isSelected = ds===fmt(curDate);
+    const hasDone = Object.keys(records[ds]||{}).length>0;
+    const cell = document.createElement('div');
+    cell.className = 'date-cell'+(isToday?' today':'')+(isSelected?' selected':'')+(hasDone?' done':'');
+    const wd = ['日','一','二','三','四','五','六'][d.getDay()];
+    cell.innerHTML = `<div class="w">周${wd}</div><div class="d">${d.getDate()}</div><div class="m">${d.getMonth()+1}月</div>`;
+    cell.addEventListener('click', ()=>{ curDate=d; renderDateStrip(); renderTodayTasks(); });
+    strip.appendChild(cell);
+  }
+  const sel = strip.querySelector('.selected');
+  if(sel) sel.scrollIntoView({ inline:'center', behavior:'smooth', block:'nearest' });
+}
+
+/* 移动任务顺序（上移/下移），调整今日任务的排列位置，并持久化+同步 */
+function moveTask(id, dir){
+  const i = plans.findIndex(t=>t.id===id);
+  const j = i + dir;
+  if(i<0 || j<0 || j>=plans.length) return;
+  [plans[i], plans[j]] = [plans[j], plans[i]];
+  save(LS_PLANS, plans);
+  renderTodayTasks();
+}
+
+/* 给任务卡片头部追加 ↑/↓ 排序按钮 */
+function attachOrderBtns(card, task){
+  const head = card.querySelector('.task-head');
+  if(!head) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'card-order';
+  wrap.innerHTML = `<button class="order-btn" data-id="${task.id}" data-dir="-1" title="上移">↑</button><button class="order-btn" data-id="${task.id}" data-dir="1" title="下移">↓</button>`;
+  head.appendChild(wrap);
+  wrap.querySelectorAll('.order-btn').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      moveTask(task.id, parseInt(btn.dataset.dir,10));
+    });
+  });
+}
+
+function renderTodayTasks(){
+  const box = $('#todayTasks');
+  // 预打卡提示条：选中未来/过去日期时提示
+  const bar = $('#precheckBar');
+  const isToday = fmt(curDate)===fmt(new Date());
+  if(isToday){
+    bar.style.display='none'; bar.innerHTML='';
+  } else {
+    const wd = ['日','一','二','三','四','五','六'][curDate.getDay()];
+    const isFuture = curDate > new Date();
+    bar.style.display='block';
+    bar.innerHTML = `
+      <div class="precheck-bar ${isFuture?'future':'past'}">
+        <span>${isFuture?'⏩ 正在预打卡':'⏪ 正在回看'} <b>${curDate.getMonth()+1}月${curDate.getDate()}日（周${wd}）</b></span>
+        <button class="btn btn-sm btn-soft" id="backToday">回今天</button>
+      </div>`;
+    $('#backToday').addEventListener('click', ()=>{
+      curDate = new Date();
+      renderDateStrip(); renderTodayTasks();
+    });
+  }
+  box.innerHTML = '';
+  if(!plans.length){
+    box.innerHTML = `<div class="empty"><div class="e">🌱</div>还没有任务<br>点击右上角 ＋ 或到设置里添加</div>`;
+    return;
+  }
+  const today = fmt(curDate);
+  plans.forEach(task=>{ box.appendChild(buildTaskCard(task, today)); });
+}
+
+// 生成单个任务卡片
+function buildTaskCard(task, dateStr){
+  const sub = getSubject(task.subjectId);
+  const accent = sub ? sub.color : '#9B5DE5';
+  const emoji = task.emoji || (sub&&sub.emoji) || '📌';
+  const subName = sub ? sub.name : '其他';
+  // 古诗文抽签背默按钮（仅开启 poem 模式的任务显示）；考前复习期显示复习标记
+  const prepLeft2 = task.poem ? prepLeft(task, dateStr) : null;
+  const poemBtn = task.poem
+    ? `<div style="margin-top:12px">
+        ${prepLeft2!==null ? `<div class="prep-badge">📚 考前复习 · 距考试 ${prepLeft2} 天（抽已背过的回顾）</div>` : ''}
+        <button class="btn btn-sm btn-primary poem-btn" data-id="${task.id}">${prepLeft2!==null ? '📚 考前复习抽签（已背回顾）' : '📜 今日5首抽签背默'}</button>
+      </div>`
+    : '';
+  const card = document.createElement('div');
+  card.className = 'task-card';
+  card.style.setProperty('--accent', accent);
+
+  /* 周目标任务：滑动窗口逻辑 */
+  if(task.type==='weekly'){
+    const wkMon = mondayOf(parseDate(dateStr));
+    const wkSun = new Date(wkMon); wkSun.setDate(wkMon.getDate()+6);
+    let doneCount = 0;
+    for(let d=new Date(wkMon); d<=wkSun; d.setDate(d.getDate()+1)){
+      if(starOf(task.id, fmt(d))>0) doneCount++;
+    }
+    const hidden = doneCount >= task.target;   // 完成目标后本周剩余日期自动隐藏
+
+    card.innerHTML = `
+      <div class="task-head">
+        <div class="task-emoji">${emoji}</div>
+        <div style="flex:1">
+          <div class="task-title">${escapeHtml(task.name)}</div>
+          <div class="task-tags">
+            <span class="tag" style="color:${accent};background:${accent}1A">${subName}</span>
+            <span class="tag tag-type weekly">周目标 · ${task.target}次/周</span>
+          </div>
+        </div>
+      </div>
+      ${hidden ? '' : `
+      <div class="weekly-progress">
+        <div class="weekly-bar"><i style="width:${Math.min(100, doneCount/task.target*100)}%;background:${accent}"></i></div>
+        <div class="weekly-hint">
+          <span>本周已完成 <b>${doneCount}</b>/${task.target} 次，还差 <b style="color:${accent}">${task.target-doneCount}</b> 次</span>
+          <button class="skip" data-id="${task.id}">跳过今日 ›</button>
+        </div>
+      </div>
+      ${task.poem ? poemBtn : ''}
+      `}`;
+
+    if(hidden){
+      card.style.opacity = '.55';
+      card.innerHTML = `
+        <div class="task-head">
+          <div class="task-emoji">✅</div>
+          <div style="flex:1">
+            <div class="task-title">${escapeHtml(task.name)}</div>
+            <div class="task-tags">
+              <span class="tag" style="color:${accent};background:${accent}1A">${subName}</span>
+              <span class="tag tag-type weekly">周目标 · 已完成 ✔</span>
+            </div>
+          </div>
+        </div>
+        <div class="weekly-hint"><span>本周目标 ${task.target} 次已达成，已自动隐藏 🎉</span></div>`;
+    }
+
+    /* “跳过今日”：当日不计入，任务顺延，不累积旧账 */
+    card.querySelectorAll('.skip').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const skipKey = 'study_skip_' + task.id;
+        const skips = load(skipKey, {});
+        skips[dateStr] = true;
+        save(skipKey, skips);
+        toast('已跳过今日，任务顺延，不计入本周 ✅');
+        renderTodayTasks();
+        renderWeek();
+      });
+    });
+
+    if(!hidden){
+      card.style.cursor='pointer';
+      card.addEventListener('click', ()=>openStarSheet(task, dateStr));
+    }
+    card.querySelectorAll('.poem-btn').forEach(b=>b.addEventListener('click', e=>{ e.stopPropagation(); openPoemDrawer(task, dateStr); }));
+    bindLongPress(card, task);
+    attachOrderBtns(card, task);
+    return card;
+  }
+
+  /* —— 每日任务 —— */
+  const star = starOf(task.id, dateStr);
+  const done = star > 0;
+  card.innerHTML = `
+    <div class="task-head">
+      <div class="task-emoji">${emoji}</div>
+      <div style="flex:1">
+        <div class="task-title">${escapeHtml(task.name)}</div>
+        <div class="task-tags">
+          <span class="tag" style="color:${accent};background:${accent}1A">${subName}</span>
+          <span class="tag tag-type daily">每日任务</span>
+        </div>
+      </div>
+    </div>
+    ${done ? `<div class="daily-done">✔ 今日已打卡</div>` : ''}
+    ${task.poem ? poemBtn : ''}
+  `;
+  card.style.cursor='pointer';
+  card.addEventListener('click', ()=>openStarSheet(task, dateStr));
+  card.querySelectorAll('.poem-btn').forEach(b=>b.addEventListener('click', e=>{ e.stopPropagation(); openPoemDrawer(task, dateStr); }));
+  bindLongPress(card, task);
+  attachOrderBtns(card, task);
+  return card;
+}
+
+/* ============================================================
+   古诗文背默抽签弹窗
+   ============================================================ */
+let poemCtx = null; // { task, dateStr }
+let poemLevel = ''; // 当前抽签学段：''(未选)/全部/小学/初中
+let poemN = Math.max(1, Math.min(10, parseInt(localStorage.getItem('study_poem_daily_n')||'5', 10)||5)); // 每日抽签篇数（默认5，可设1-10）
+
+// 学段切换（先选学段，再抽签）
+$('#poemLevelSeg').addEventListener('click', e=>{
+  const b = e.target.closest('.seg-item'); if(!b) return;
+  poemLevel = b.dataset.level;
+  renderPoemLevelSeg();
+  renderPoemDraw();
+});
+
+function renderPoemLevelSeg(){
+  $('#poemLevelSeg').querySelectorAll('.seg-item')
+    .forEach(x=>x.classList.toggle('active', x.dataset.level===poemLevel));
+}
+
+// 补抽一首：跳过某首后，从“未掌握、未跳过、且不在当前列表”的池子里补一首，保持当日篇数
+function refillOne(taskId){
+  const inList = new Set(poemCtx.curList.map(p=>p.t));
+  const mem = loadMem(taskId), skip = loadSkip(taskId);
+  let pool = POEMS.filter(p =>
+    (!poemLevel || poemLevel==='全部' ? true : p.lvl===poemLevel)
+    && !(mem[p.t] && mem[p.t].master) && !skip[p.t] && !inList.has(p.t));
+  if(!pool.length) return;
+  const today = parseDate(poemCtx.dateStr);
+  const due = pool.filter(p=>isDue(mem[p.t], today)); // 优先补“到期该复习”的
+  const cand = due.length ? due : pool;
+  const rnd = mulberry32(hashStr(poemCtx.dateStr+'|'+poemLevel+'|'+poemCtx.curList.length+'|refill'));
+  poemCtx.curList.push(cand[Math.floor(rnd()*cand.length)]);
+}
+// 更新抽签头部（日期 + 篇数 + 考前复习提示）
+function updatePoemHead(){
+  const task = poemCtx.task, dateStr = poemCtx.dateStr;
+  const lvlTxt = poemLevel==='全部' ? '' : `${poemLevel} · `;
+  const left = prepLeft(task, dateStr);
+  $('#poemDate').textContent = left!==null
+    ? `${dateStr} · 📚 考前复习 · 距考试 ${left} 天`
+    : `${dateStr} · ${lvlTxt}今日抽签 ${poemCtx.curList.length} 首`;
+  $('#poemCurve').textContent = left!==null
+    ? `📚 考前复习中：只抽「已背过的诗」回顾，距考试还有 ${left} 天，全部再过一遍`
+    : '🧠 艾宾浩斯记忆法：背过的诗按 1→2→4→7→15→30 天复习，优先抽「已到期未复习」的（即到了该复习的时间却还没背的诗）';
+}
+// 渲染当前列表 poemCtx.curList（保留 doneSet 已勾选的视觉）
+function renderList(){
+  const task = poemCtx.task;
+  const skip = loadSkip(task.id);
+  $('#poemList').innerHTML = !poemCtx.curList.length
+    ? `<div class="empty" style="padding:20px">该学段已全部掌握 🎉</div>`
+    : poemCtx.curList.map((p,i)=>{
+        const rec = loadMem(task.id)[p.t];
+        const done = !!poemCtx.doneSet[p.t];
+        return `
+      <div class="poem-card">
+        <div class="poem-head">
+          <span class="poem-num">${i+1}</span>
+          <span class="poem-title">${escapeHtml(p.t)}</span>
+          <span class="poem-lvl">${p.lvl}</span>
+        </div>
+        <div class="poem-text hidden${isMetered(p)?' metered':''}">
+          <div class="poem-meta-line">${p.d} · ${escapeHtml(p.a)}</div>
+          ${poemLines(p)}
+        </div>
+        <div class="poem-ctrl">
+          <span class="poem-state">${poemStateText(rec)}</span>
+          <button class="btn btn-sm btn-soft reveal">👀 查看全文</button>
+          <button class="btn btn-sm btn-soft done-one${done?' active':''}">${done?'✔ 已背默 ✓':'✔ 已背默'}</button>
+          <button class="btn btn-sm btn-soft skip-one">⏭ 跳过</button>
+          <button class="btn btn-sm btn-soft master-one${rec&&rec.master?' active':''}">${rec&&rec.master?'✨ 已掌握':'🌟 已掌握'}</button>
+        </div>
+      </div>`;
+      }).join('');
+  // 查看 / 遮住切换（先默后核；朝代、作者也一并在此处显示）
+  $('#poemList').querySelectorAll('.reveal').forEach((btn,idx)=>{
+    btn.addEventListener('click', ()=>{
+      const txt = $('#poemList').querySelectorAll('.poem-text')[idx];
+      const hidden = txt.classList.toggle('hidden');
+      btn.textContent = hidden ? '👀 查看全文' : '🙈 遮住再默';
+    });
+  });
+  // 单首“已背默”勾选
+  $('#poemList').querySelectorAll('.done-one').forEach((btn,idx)=>{
+    btn.addEventListener('click', ()=>{
+      btn.classList.toggle('active');
+      const on = btn.classList.contains('active');
+      btn.textContent = on ? '✔ 已背默 ✓' : '✔ 已背默';
+      if(on){ poemCtx.doneSet[poemCtx.titles[idx]]=true; } else { delete poemCtx.doneSet[poemCtx.titles[idx]]; }
+    });
+  });
+  // “已掌握/免背”标签：标记后不再抽到。局部更新（按钮亮起 + 进度条刷新），不重绘抽签列表
+  $('#poemList').querySelectorAll('.master-one').forEach((btn,idx)=>{
+    btn.addEventListener('click', ()=>{
+      const title = poemCtx.titles[idx];
+      const on = !btn.classList.contains('active');
+      setMastered(task.id, title, on);
+      btn.classList.toggle('active', on);
+      btn.textContent = on ? '✨ 已掌握' : '🌟 已掌握';
+      toast(on ? `「${title}」已标记掌握，不再抽它 🎉` : `已取消「${title}」的掌握标记`);
+      renderPoemProgress();
+    });
+  });
+  // 「跳过」：还没学到的诗跳过，立即移出列表并补抽一首（保持当日篇数）
+  $('#poemList').querySelectorAll('.skip-one').forEach((btn,idx)=>{
+    btn.addEventListener('click', ()=>{
+      const title = poemCtx.titles[idx];
+      toggleSkip(task.id, title, true);
+      delete poemCtx.doneSet[title];
+      poemCtx.curList = poemCtx.curList.filter(p=>p.t!==title);
+      refillOne(task.id);
+      poemCtx.titles = poemCtx.curList.map(p=>p.t);
+      updatePoemHead(); renderPoemProgress(); renderList();
+      toast(`「${title}」已跳过，补抽一首 ✔`);
+    });
+  });
+}
+// 按当前学段抽签并渲染
+function renderPoemDraw(){
+  const task = poemCtx.task, dateStr = poemCtx.dateStr;
+  if(!poemLevel){
+    // 尚未选学段：提示先选择
+    $('#poemDate').textContent = '';
+    $('#poemCurve').textContent = '👆 请先选择「小学」或「初中」，再开始抽签背默';
+    $('#poemList').innerHTML = `<div class="empty" style="padding:30px 10px"><div class="e">📚</div>请先选择背诵学段</div>`;
+    return;
+  }
+  poemCtx.curList = drawPoems(task.id, poemLevel, dateStr, poemN);
+  poemCtx.titles = poemCtx.curList.map(p=>p.t);
+  poemCtx.doneSet = {};
+  updatePoemHead();
+  renderPoemProgress();
+  renderList();
+}
+
+// 独立渲染背诵进度条 + 已掌握展开列表（标记/解除掌握时只刷新这里）
+function renderPoemProgress(){
+  const task = poemCtx.task;
+  const prog = poemProgress(task.id, poemLevel);
+  const pct = prog.total ? Math.round(prog.done/prog.total*100) : 0;
+  // 当前学段已掌握的诗词
+  const memNow = loadMem(task.id);
+  const masteredList = POEMS.filter(p=>
+    (!poemLevel || poemLevel==='全部' ? true : p.lvl===poemLevel)
+    && memNow[p.t] && memNow[p.t].master).map(p=>p.t);
+  // 当前学段已跳过的诗词（可恢复回待抽队列）
+  const skipNow = loadSkip(task.id);
+  const skipList = POEMS.filter(p=>
+    (!poemLevel || poemLevel==='全部' ? true : p.lvl===poemLevel)
+    && skipNow[p.t]).map(p=>p.t);
+  poemCtx.masterOpen = poemCtx.masterOpen || false;
+  poemCtx.skipOpen = poemCtx.skipOpen || false;
+  $('#poemProgress').innerHTML = `
+    <div class="pp-row"><span>📚 ${poemLevel==='全部'?'全部':poemLevel} · 共 ${prog.total} 首</span><span>已背 ${pct}%</span></div>
+    <div class="pp-bar"><i style="width:${pct}%"></i></div>
+    <div class="pp-stats">
+      <span>已背 <b class="g">${prog.done}</b></span>
+      <span>已掌握 <b class="y">${prog.mastered}</b></span>
+      <span>未背 <b class="r">${prog.todo}</b></span>
+    </div>
+    <div class="pp-master">
+      <div class="pp-master-head" id="ppMasterHead">
+        <span>✨ 已掌握诗词（${prog.mastered}）</span>
+        <span class="arr">${poemCtx.masterOpen ? '▲ 收起' : '▼ 展开'}</span>
+      </div>
+      <div class="pp-master-list" id="ppMasterList" style="${poemCtx.masterOpen?'':'display:none'}">
+        ${masteredList.length
+          ? masteredList.map(t=>`<button class="master-chip" data-t="${escapeHtml(t)}">🌟 ${escapeHtml(t)} · 解除</button>`).join('')
+          : `<span style="font-size:12px;color:var(--sub)">暂无已掌握诗词，背熟一首后点「🌟 已掌握」即可加入</span>`}
+      </div>
+    </div>
+    <div class="pp-master" style="margin-top:8px">
+      <div class="pp-master-head" id="ppSkipHead">
+        <span>⏭ 已跳过（${skipList.length}）</span>
+        <span class="arr">${poemCtx.skipOpen ? '▲ 收起' : '▼ 展开'}</span>
+      </div>
+      <div class="pp-master-list" id="ppSkipList" style="${poemCtx.skipOpen?'':'display:none'}">
+        ${skipList.length
+          ? skipList.map(t=>`<button class="skip-chip" data-t="${escapeHtml(t)}">⏭ ${escapeHtml(t)} · 恢复</button>`).join('')
+          : `<span style="font-size:12px;color:var(--sub)">暂无跳过的诗，遇到还没学到的点「⏭ 跳过」即可</span>`}
+      </div>
+    </div>`;
+  // 展开/收起已掌握列表
+  $('#ppMasterHead').addEventListener('click', ()=>{
+    poemCtx.masterOpen = !poemCtx.masterOpen;
+    renderPoemProgress();
+  });
+  // 点击已掌握诗词 → 解除掌握，回到待背诵队列（仅刷进度条，列表保持）
+  $('#poemProgress').querySelectorAll('.master-chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      const title = chip.dataset.t;
+      setMastered(task.id, title, false);
+      toast(`已取消「${title}」掌握，回到待背诵队列`);
+      renderPoemProgress();
+    });
+  });
+  // 展开/收起已跳过列表
+  $('#ppSkipHead').addEventListener('click', ()=>{
+    poemCtx.skipOpen = !poemCtx.skipOpen;
+    renderPoemProgress();
+  });
+  // 点击已跳过诗词 → 恢复，回到待抽队列（重新抽签，保留仍勾选的背默）
+  $('#poemProgress').querySelectorAll('.skip-chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      const title = chip.dataset.t;
+      toggleSkip(task.id, title, false);
+      poemCtx.curList = drawPoems(task.id, poemLevel, poemCtx.dateStr, poemN);
+      poemCtx.titles = poemCtx.curList.map(p=>p.t);
+      const keep = {}; poemCtx.titles.forEach(t=>{ if(poemCtx.doneSet[t]) keep[t]=true; }); poemCtx.doneSet = keep;
+      updatePoemHead(); renderPoemProgress(); renderList();
+      toast(`「${title}」恢复，回到待背队列`);
+    });
+  });
+}
+
+function openPoemDrawer(task, dateStr){
+  poemCtx = { task, dateStr };
+  // 默认用任务预设学段；若无预设则让用户先选
+  poemLevel = (task.level && task.level!=='全部') ? task.level : '';
+  renderPoemLevelSeg();
+  $('#poemNVal').textContent = poemN;
+  renderPoemDraw();
+  $('#poemMask').classList.add('show');
+}
+
+// 每日抽签数量步进器
+function setPoemN(n){
+  poemN = Math.max(1, Math.min(10, n));
+  localStorage.setItem('study_poem_daily_n', poemN);
+  $('#poemNVal').textContent = poemN;
+  renderPoemDraw();
+}
+$('#poemNMinus').addEventListener('click', ()=> setPoemN(poemN-1));
+$('#poemNPlus').addEventListener('click', ()=> setPoemN(poemN+1));
+
+// 完成今日背默：把标记（或全部）诗词写入记忆并记 1 星
+$('#btnPoemDone').addEventListener('click', ()=>{
+  if(!poemCtx) return;
+  const marked = [...$('#poemList').querySelectorAll('.done-one')]
+    .map((b,i)=> b.classList.contains('active') ? poemCtx.titles[i] : null)
+    .filter(Boolean);
+  const titles = marked.length ? marked : poemCtx.titles;  // 一个都没标记 → 整批都算背过
+  commitRecite(poemCtx.task.id, poemCtx.dateStr, titles);
+  setStar(poemCtx.task, poemCtx.dateStr, 1);
+  $('#poemMask').classList.remove('show');
+  toast(`今日背默完成，记 1 星 · 已记录 ${titles.length} 首 🌟`);
+});
+$('#poemClose').addEventListener('click', ()=>$('#poemMask').classList.remove('show'));
+$('#poemMask').addEventListener('click', e=>{ if(e.target.id==='poemMask') $('#poemMask').classList.remove('show'); });
+
+/* ============================================================
+   打卡星级弹窗
+   ============================================================ */
+function openStarSheet(task, dateStr){
+  $('#starTitle').textContent = `${task.name} · ${dateStr.slice(5)}`;
+  const box = $('#starOptions');
+  box.innerHTML = '';
+  const current = starOf(task.id, dateStr);
+  STAR_LEVELS.forEach((lv)=>{
+    const b = document.createElement('button');
+    b.className = 'star-opt'+(current===lv.val?' active':'');
+    b.innerHTML = `<span class="s">${lv.sym}</span>${lv.label}`;
+    b.addEventListener('click', ()=>{
+      setStar(task, dateStr, lv.val);
+      $('#starMask').classList.remove('show');
+      toast(lv.val>0 ? `打卡成功 +${lv.val} 星 🌟` : '已标记未做');
+    });
+    box.appendChild(b);
+  });
+  $('#starMask').classList.add('show');
+}
+function closeStarSheet(){ $('#starMask').classList.remove('show'); }
+
+// 写入打卡记录：绑定 日期+任务ID
+function setStar(task, dateStr, star){
+  if(!records[dateStr]) records[dateStr] = {};
+  if(star<=0){
+    delete records[dateStr][task.id];
+    if(!Object.keys(records[dateStr]).length) delete records[dateStr];
+  } else {
+    records[dateStr][task.id] = star;
+  }
+  persistRecords();
+  renderTodayTasks();
+  renderWeek();
+  const cards = document.querySelectorAll('.task-card');
+  cards.forEach(c=>{ c.classList.remove('anim-pop'); void c.offsetWidth; c.classList.add('anim-pop'); });
+}
+$('#starClose').addEventListener('click', closeStarSheet);
+$('#starMask').addEventListener('click', (e)=>{ if(e.target.id==='starMask') closeStarSheet(); });
+
+/* ============================================================
+   周统计视图（周复盘）
+   ============================================================ */
+function renderWeek(){
+  const mon = mondayOf(weekAnchor);
+  const sun = new Date(mon); sun.setDate(mon.getDate()+6);
+  $('#weekLabel').textContent = `${mon.getMonth()+1}月${mon.getDate()}日 - ${sun.getMonth()+1}月${sun.getDate()}日`;
+  $('#weekPrev').onclick = ()=>{ weekAnchor.setDate(weekAnchor.getDate()-7); renderWeek(); };
+  $('#weekNext').onclick = ()=>{ weekAnchor.setDate(weekAnchor.getDate()+7); renderWeek(); };
+
+  renderReport(mon, sun);
+  renderGrid(mon, sun);
+  renderHistory();
+}
+
+function computeWeekReport(mon, sun){
+  let totalStars=0, halfCnt=0;
+  const items = plans.map(task=>{
+    let done=0;
+    for(let d=new Date(mon); d<=sun; d.setDate(d.getDate()+1)){
+      const s = starOf(task.id, fmt(d));
+      totalStars += s;
+      if(s===0.5) halfCnt++;
+      if(s>0) done++;
+    }
+    const denom = task.type==='weekly' ? task.target : 7;
+    return { id:task.id, name:task.name, done:Math.min(done,denom), total:denom, rawDone:done };
+  });
+  const expTotal = items.reduce((a,i)=>a+i.total,0);
+  const doneTotal = items.reduce((a,i)=>a+i.done,0);
+  const rate = expTotal ? Math.round(doneTotal/expTotal*100) : 0;
+  const sorted = [...items].sort((a,b)=>(b.rawDone>0)-(a.rawDone>0));
+  const notDone = items.filter(i=>i.rawDone===0).length;
+  return {
+    rate, doneTotal, expTotal, totalStars, halfCnt, notDone, items:sorted,
+    range:`${mon.getMonth()+1}/${mon.getDate()}~${sun.getMonth()+1}/${sun.getDate()}`,
+    year: mon.getFullYear(),
+  };
+}
+
+function renderReport(mon, sun){
+  const r = computeWeekReport(mon, sun);
+  const isCurrent = fmt(mon)===fmt(mondayOf(new Date()));
+  const html = `
+    <div class="review-card">
+      <div class="review-head">
+        <div>
+          <div class="review-title">📋 本周学习复盘${isCurrent?'':' · 历史周'}</div>
+          <div class="review-date">${r.year}-${r.range} · 本周任务执行汇总</div>
+        </div>
+        ${isCurrent ? `<button class="btn btn-sm btn-primary" id="btnSaveReview">💾 保存本周复盘</button>` : ''}
+      </div>
+      <div class="review-stats">
+        <div class="review-stat"><div class="k">完成率</div><div class="v">${r.rate}%</div><div class="s">${r.doneTotal}/${r.expTotal} 次</div></div>
+        <div class="review-stat"><div class="k">获得星星</div><div class="v stars">⭐${r.totalStars}</div><div class="s">半星 ${r.halfCnt} 次 · 未完成 ${r.notDone} 项</div></div>
+      </div>
+      <div class="review-detail">
+        <div class="dtitle">各任务明细（已完成在前，未完成在后）</div>
+        ${r.items.map(i=>`
+          <div class="detail-item ${i.rawDone>0?'ok':''}">
+            <span class="n">${i.rawDone>0?'✔':'·'} ${escapeHtml(i.name)}</span>
+            <span class="c">${i.done}/${i.total} 次</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  $('#reviewCard').innerHTML = html;
+  const saveBtn = document.getElementById('btnSaveReview');
+  if(saveBtn) saveBtn.addEventListener('click', ()=>saveReview());
+}
+
+function saveReview(){
+  const mon = mondayOf(weekAnchor);
+  const sun = new Date(mon); sun.setDate(mon.getDate()+6);
+  const r = computeWeekReport(mon, sun);
+  const key = fmt(mon);
+  reviews = reviews.filter(x=>x.key!==key);
+  reviews.push({ key, range:r.range, year:r.year, rate:r.rate, stars:r.totalStars, done:r.doneTotal, total:r.expTotal });
+  save(LS_REVIEWS, reviews);
+  renderHistory();
+  toast('本周复盘已保存 💾');
+}
+
+function renderHistory(){
+  const box = $('#historyList');
+  if(!reviews.length){
+    box.innerHTML = `<div class="empty" style="padding:20px">还没有保存的复盘<br>在报告卡点击「保存本周复盘」即可留存</div>`;
+    return;
+  }
+  const sorted = [...reviews].sort((a,b)=>b.key.localeCompare(a.key));
+  box.innerHTML = sorted.map(r=>`
+    <div class="history-item">
+      <div>
+        <div class="hi-title">🗓 ${r.year}-${r.range} 本周复盘</div>
+        <div class="hi-meta">完成率 ${r.rate}% · 星星 ⭐${r.stars} · ${r.done}/${r.total}次</div>
+      </div>
+      <button class="btn btn-sm btn-soft hi-open" data-key="${r.key}">查看</button>
+    </div>`).join('');
+  box.querySelectorAll('.hi-open').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      weekAnchor = parseDate(b.dataset.key);
+      renderWeek();
+      window.scrollTo({ top:0, behavior:'smooth' });
+      toast('已定位到该周 📅');
+    });
+  });
+}
+
+// 7 列网格日历
+function renderGrid(mon, sun){
+  const grid = $('#gridCal');
+  const wd = ['周一','周二','周三','周四','周五','周六','周日'];
+  let head = '<div class="grid-head"><div></div>';
+  wd.forEach(w=>{ head += `<div>${w}</div>`; });
+  head += '</div>';
+  let body='';
+  plans.forEach(task=>{
+    const sub = getSubject(task.subjectId);
+    let row = `<div class="grid-row"><div class="grid-task" title="${escapeHtml(task.name)}">${escapeHtml(task.name)}</div>`;
+    let weekDone=0;
+    const doneCells=[];
+    for(let d=new Date(mon); d<=sun; d.setDate(d.getDate()+1)){
+      const ds=fmt(d);
+      const s=starOf(task.id,ds);
+      if(s>0) weekDone++;
+      doneCells.push({ds,s});
+    }
+    const hidden = task.type==='weekly' && weekDone>=task.target;
+    doneCells.forEach((c,idx)=>{
+      const isPast = parseDate(c.ds) <= new Date();
+      if(c.s>=1){
+        row += `<div class="cell g2">⭐<small>${c.s}</small></div>`;
+      } else if(c.s>0){
+        row += `<div class="cell g1">🌓</div>`;
+      } else if(hidden && idx>0){
+        row += `<div class="cell none">⊘</div>`;
+      } else if(!isPast){
+        row += `<div class="cell none" style="background:#FBFBFD">·</div>`;
+      } else {
+        row += `<div class="cell none"></div>`;
+      }
+    });
+    row += '</div>';
+    body += row;
+  });
+  grid.innerHTML = head + (plans.length?body:`<div class="empty" style="padding:30px 10px">暂无任务</div>`);
+}
+
+/* ============================================================
+   设置面板
+   ============================================================ */
+function renderSettings(){
+  renderSubjectList();
+  renderSubjectTasks();
+}
+
+/* 打开设置 */
+$('#btnSettings').addEventListener('click', ()=>{ renderSettings(); $('#settingsMask').classList.add('show'); });
+$('#settingsClose').addEventListener('click', ()=>$('#settingsMask').classList.remove('show'));
+$('#settingsMask').addEventListener('click', e=>{ if(e.target.id==='settingsMask') $('#settingsMask').classList.remove('show'); });
+
+/* —— 课程列表 —— */
+function renderSubjectList(){
+  const box = $('#subjectList');
+  box.innerHTML = subjects.map(s=>{
+    const cnt = plans.filter(p=>p.subjectId===s.id).length;
+    return `
+      <div class="subj-row">
+        <span class="se">${s.emoji}</span>
+        <span class="color-dot" style="background:${s.color}"></span>
+        <span class="nm">${escapeHtml(s.name)}</span>
+        <span class="cnt">${cnt} 个任务</span>
+        <button class="icon-btn se-edit" data-id="${s.id}">✏️</button>
+        <button class="icon-btn danger se-del" data-id="${s.id}">🗑</button>
+      </div>`;
+  }).join('') || `<div class="empty" style="padding:20px">还没有课程，点击上方新增</div>`;
+  box.querySelectorAll('.se-edit').forEach(b=>b.addEventListener('click', ()=>openSubject(b.dataset.id)));
+  box.querySelectorAll('.se-del').forEach(b=>b.addEventListener('click', ()=>deleteSubject(b.dataset.id)));
+}
+
+/* —— 按课程分组的任务管理 —— */
+function renderSubjectTasks(){
+  const box = $('#subjectTasks');
+  box.innerHTML = subjects.map(s=>{
+    const tasks = plans.filter(p=>p.subjectId===s.id);
+    const rows = tasks.map(t=>`
+      <div class="task-row">
+        <span class="tn">${escapeHtml(t.name)}</span>
+        <span class="tt ${t.type}">${t.type==='daily'?'每日':'周目标·'+t.target+'次'}</span>
+        <button class="icon-btn t-edit" data-id="${t.id}">✏️</button>
+        <button class="icon-btn danger t-del" data-id="${t.id}">🗑</button>
+      </div>`).join('') || `<div class="task-row" style="color:var(--sub);font-size:13px;justify-content:center">暂无任务</div>`;
+    return `
+      <div class="grp">
+        <div class="grp-head">
+          <span class="se">${s.emoji}</span>
+          <span class="nm" style="color:${s.color}">${escapeHtml(s.name)}</span>
+          <button class="add" data-id="${s.id}">＋ 添加任务</button>
+        </div>
+        ${rows}
+      </div>`;
+  }).join('');
+  box.querySelectorAll('.add').forEach(b=>b.addEventListener('click', ()=>{ openTaskModal(null, b.dataset.id); }));
+  box.querySelectorAll('.t-edit').forEach(b=>b.addEventListener('click', ()=>{
+    const t = plans.find(x=>x.id===b.dataset.id); if(t) openTaskModal(t);
+  }));
+  box.querySelectorAll('.t-del').forEach(b=>b.addEventListener('click', ()=>{ deleteTask(b.dataset.id); }));
+}
+
+/* —— 删除课程（连带删除该课程所有任务与打卡记录） —— */
+function deleteSubject(id){
+  const s = subjects.find(x=>x.id===id);
+  if(!s) return;
+  const cnt = plans.filter(p=>p.subjectId===id).length;
+  const msg = cnt
+    ? `确定删除课程「${s.name}」吗？\n其下 ${cnt} 个任务及所有历史打卡记录将一并清除。`
+    : `确定删除课程「${s.name}」吗？`;
+  if(!confirm(msg)) return;
+  // 删除该课程下的所有任务及其记录
+  plans.filter(p=>p.subjectId===id).forEach(t=>deleteTaskData(t.id, false));
+  subjects = subjects.filter(x=>x.id!==id);
+  persistSubjects(); persistPlans(); persistRecords();
+  renderSettings(); renderTodayTasks(); renderWeek();
+  toast('课程已删除');
+}
+
+/* ============================================================
+   课程新增 / 编辑 / 删除
+   ============================================================ */
+let editingSubjectId = null;
+let selColor = COLOR_PALETTE[0];
+
+// 渲染配色选择
+function renderColorPick(){
+  const box = $('#s_color');
+  box.innerHTML = COLOR_PALETTE.map(c=>
+    `<div class="color-opt ${c===selColor?'active':''}" data-c="${c}" style="background:${c}"></div>`).join('');
+  box.querySelectorAll('.color-opt').forEach(o=>o.addEventListener('click', ()=>{
+    selColor = o.dataset.c;
+    box.querySelectorAll('.color-opt').forEach(x=>x.classList.remove('active'));
+    o.classList.add('active');
+  }));
+}
+
+$('#btnAddSubject').addEventListener('click', ()=>{
+  editingSubjectId = null;
+  $('#subjectModalTitle').textContent = '新增课程';
+  $('#s_name').value=''; $('#s_emoji').value='📘';
+  selColor = COLOR_PALETTE[Math.floor(Math.random()*COLOR_PALETTE.length)];
+  $('#btnDeleteSubject').style.display='none';
+  renderColorPick();
+  $('#subjectMask').classList.add('show');
+});
+
+function openSubject(id){
+  const s = subjects.find(x=>x.id===id); if(!s) return;
+  editingSubjectId = id;
+  $('#subjectModalTitle').textContent = '编辑课程';
+  $('#s_name').value = s.name;
+  $('#s_emoji').value = s.emoji;
+  selColor = s.color;
+  $('#btnDeleteSubject').style.display='inline-flex';
+  renderColorPick();
+  $('#subjectMask').classList.add('show');
+}
+
+$('#btnSaveSubject').addEventListener('click', ()=>{
+  const name = $('#s_name').value.trim();
+  const emoji = $('#s_emoji').value.trim() || '📘';
+  if(!name){ toast('请输入课程名称'); return; }
+  if(editingSubjectId){
+    const s = subjects.find(x=>x.id===editingSubjectId);
+    if(s){ s.name=name; s.emoji=emoji; s.color=selColor; }
+  } else {
+    subjects.push({ id:uid(), name, emoji, color:selColor });
+  }
+  persistSubjects();
+  $('#subjectMask').classList.remove('show');
+  renderSettings(); renderTodayTasks(); renderWeek();
+  toast('课程已保存 ✔');
+});
+
+$('#btnDeleteSubject').addEventListener('click', ()=>{ if(editingSubjectId){ $('#subjectMask').classList.remove('show'); deleteSubject(editingSubjectId); } });
+$('#subjectClose').addEventListener('click', ()=>$('#subjectMask').classList.remove('show'));
+$('#subjectMask').addEventListener('click', e=>{ if(e.target.id==='subjectMask') $('#subjectMask').classList.remove('show'); });
+
+/* ============================================================
+   任务新增 / 编辑 / 删除
+   ============================================================ */
+let editingId = null;
+let selSubjectId = null, selType = 'daily', selPoem = false, selLevel = '全部';
+let selPrep = false, selExamDate = '', selPrepDays = 7; // 考前复习安排
+
+// 动态渲染课程选项
+function renderSubjectOptions(selectedId){
+  const box = $('#f_subject');
+  box.innerHTML = subjects.map(s=>
+    `<button class="seg-item ${s.id===selectedId?'active':''}" data-id="${s.id}">${s.emoji} ${escapeHtml(s.name)}</button>`).join('');
+  box.querySelectorAll('.seg-item').forEach(b=>b.addEventListener('click', ()=>{
+    box.querySelectorAll('.seg-item').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active'); selSubjectId = b.dataset.id;
+  }));
+}
+
+$('#f_type').addEventListener('click', e=>{
+  const b = e.target.closest('.seg-item'); if(!b) return;
+  document.querySelectorAll('#f_type .seg-item').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); selType = b.dataset.type;
+  $('#f_weeklyBox').style.display = selType==='weekly' ? '' : 'none';
+});
+
+// 打卡模式切换（古诗文抽签背默 / 普通打卡）
+$('#f_poem').addEventListener('click', e=>{
+  const b = e.target.closest('.seg-item'); if(!b) return;
+  document.querySelectorAll('#f_poem .seg-item').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); selPoem = b.dataset.poem==='1';
+  $('#f_levelBox').style.display = selPoem ? '' : 'none';  // 背默学段仅背默模式显示
+  $('#f_prepBox').style.display = selPoem ? '' : 'none';   // 考前复习仅背默模式显示
+  $('#f_prepSub').style.display = (selPoem && selPrep) ? '' : 'none';
+});
+
+// 背默学段切换
+$('#f_level').addEventListener('click', e=>{
+  const b = e.target.closest('.seg-item'); if(!b) return;
+  document.querySelectorAll('#f_level .seg-item').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); selLevel = b.dataset.level;
+});
+
+// 考前复习开关切换
+$('#f_prep').addEventListener('click', e=>{
+  const b = e.target.closest('.seg-item'); if(!b) return;
+  document.querySelectorAll('#f_prep .seg-item').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); selPrep = b.dataset.prep==='1';
+  $('#f_prepSub').style.display = selPrep ? '' : 'none';
+});
+$('#f_examDate').addEventListener('input', e=>{ selExamDate = e.target.value; });
+$('#f_prepDays').addEventListener('input', e=>{ selPrepDays = Math.max(1, Math.min(14, parseInt(e.target.value)||7)); });
+
+// 打开任务弹窗：task 为 null 表示新增，presetSubjectId 用于从设置里的某课程直接添加
+function openTaskModal(task, presetSubjectId){
+  editingId = task ? task.id : null;
+  $('#taskModalTitle').textContent = task ? '编辑任务' : '新增任务';
+  $('#f_name').value = task ? task.name : '';
+  $('#f_target').value = task ? (task.target||4) : 4;
+  const subId = task ? task.subjectId : (presetSubjectId || subjects[0].id);
+  selSubjectId = subId;
+  selType = task ? task.type : 'daily';
+  selPoem = task ? !!task.poem : false;
+  selLevel = task ? (task.level||'全部') : '全部';
+  selPrep = task ? !!task.prepEnabled : false;
+  selExamDate = task ? (task.prepExamDate||'') : '';
+  selPrepDays = task ? (task.prepDays||7) : 7;
+  renderSubjectOptions(subId);
+  document.querySelectorAll('#f_type .seg-item').forEach(x=>x.classList.toggle('active', x.dataset.type===selType));
+  document.querySelectorAll('#f_poem .seg-item').forEach(x=>x.classList.toggle('active', (x.dataset.poem==='1')===selPoem));
+  document.querySelectorAll('#f_level .seg-item').forEach(x=>x.classList.toggle('active', x.dataset.level===selLevel));
+  document.querySelectorAll('#f_prep .seg-item').forEach(x=>x.classList.toggle('active', (x.dataset.prep==='1')===selPrep));
+  $('#f_weeklyBox').style.display = selType==='weekly' ? '' : 'none';
+  $('#f_levelBox').style.display = selPoem ? '' : 'none';
+  $('#f_prepBox').style.display = selPoem ? '' : 'none';
+  $('#f_prepSub').style.display = (selPoem && selPrep) ? '' : 'none';
+  $('#f_examDate').value = selExamDate;
+  $('#f_prepDays').value = selPrepDays;
+  $('#btnDelete').style.display = task ? 'inline-flex' : 'none';
+  $('#taskMask').classList.add('show');
+}
+$('#btnAdd').addEventListener('click', ()=>{ openTaskModal(null); });
+
+// 长按/右键任务卡片进入编辑
+function bindLongPress(card, task){
+  let timer=null;
+  const start=()=>{ timer=setTimeout(()=>openTaskModal(task), 650); };
+  const cancel=()=>{ clearTimeout(timer); };
+  card.addEventListener('touchstart', start, {passive:true});
+  card.addEventListener('touchend', cancel);
+  card.addEventListener('touchmove', cancel);
+  card.addEventListener('contextmenu', e=>{ e.preventDefault(); openTaskModal(task); });
+}
+
+$('#btnSave').addEventListener('click', ()=>{
+  const name = $('#f_name').value.trim();
+  if(!name){ toast('请输入任务名称'); return; }
+  if(!selSubjectId){ toast('请选择课程'); return; }
+  const target = selType==='weekly' ? (parseInt($('#f_target').value)||4) : 0;
+  const sub = getSubject(selSubjectId);
+  if(editingId){
+    const t = plans.find(x=>x.id===editingId);
+    if(t){ t.name=name; t.subjectId=selSubjectId; t.type=selType; t.target=target; t.emoji=sub.emoji; t.poem=selPoem; t.level=selPoem?selLevel:'全部';
+      t.prepEnabled = selPoem && selPrep; t.prepExamDate = selPoem && selPrep ? selExamDate : ''; t.prepDays = selPoem && selPrep ? selPrepDays : 0; }
+  } else {
+    plans.push({ id:uid(), name, subjectId:selSubjectId, type:selType, target, emoji:sub.emoji, poem:selPoem, level:selPoem?selLevel:'全部',
+      prepEnabled: selPoem && selPrep, prepExamDate: selPoem && selPrep ? selExamDate : '', prepDays: selPoem && selPrep ? selPrepDays : 0 });
+  }
+  persistPlans();
+  $('#taskMask').classList.remove('show');
+  renderTodayTasks(); renderWeek(); renderSettings();
+  toast('任务已保存 ✔');
+});
+
+/* 删除单个任务的数据（打卡记录+跳过标记）；confirmIt 控制是否弹确认 */
+function deleteTaskData(id, confirmIt){
+  if(confirmIt && !confirm('确定删除该任务吗？\n其所有历史打卡记录将一并清除。')) return false;
+  plans = plans.filter(x=>x.id!==id);
+  Object.keys(records).forEach(ds=>{
+    delete records[ds][id];
+    if(!Object.keys(records[ds]).length) delete records[ds];
+  });
+  localStorage.removeItem('study_skip_'+id);
+  return true;
+}
+
+function deleteTask(id){
+  const t = plans.find(x=>x.id===id); if(!t) return;
+  if(deleteTaskData(id, true)){
+    persistPlans(); persistRecords();
+    renderTodayTasks(); renderWeek(); renderSettings();
+    toast('任务已删除');
+  }
+}
+
+$('#btnDelete').addEventListener('click', ()=>{ if(editingId){ $('#taskMask').classList.remove('show'); deleteTask(editingId); } });
+$('#taskClose').addEventListener('click', ()=>$('#taskMask').classList.remove('show'));
+$('#taskMask').addEventListener('click', e=>{ if(e.target.id==='taskMask') $('#taskMask').classList.remove('show'); });
+
+/* ---------- Toast 提示 ---------- */
+let toastTimer=null;
+function toast(msg){
+  const t=$('#toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+/* ---------- 初始化渲染 ---------- */
+renderDateStrip();
+renderTodayTasks();
+renderWeek();
+
+/* ---------- 纯本地版：无云同步，数据仅存本设备浏览器 ---------- */
+
+</script>
+</body>
+</html>
