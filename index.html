@@ -452,11 +452,18 @@ body{
       <div id="subjectTasks"></div>
     </div>
 
-    <!-- 本地存储说明（纯本地版，不依赖云同步） -->
+    <!-- 数据同步（GitHub 云同步版）：把数据存到你自己的 GitHub 仓库，免费、多设备共享 -->
     <div class="set-sec">
-      <div class="set-sec-head"><span class="t">💾 数据存储</span></div>
+      <div class="set-sec-head"><span class="t">💾 数据同步</span></div>
       <div class="sync-box">
-        <p class="sync-tip">本版为<b>纯本地版</b>：所有数据（课程、任务、打卡、古诗背诵）仅保存在<b>当前设备浏览器</b>里，不上传、不联网、不跨设备同步。请知悉：换设备或清理浏览器缓存，会清空该设备的数据。</p>
+        <p class="sync-tip">在<b>不同设备上填同一个「同步码」</b>，即可共享同一份数据（课程、任务、打卡、古诗背诵）。数据以文件形式存到你的 GitHub 仓库 <b>taciloquy/study-workbench</b>，无需付费。</p>
+        <p class="sync-tip" style="margin-top:6px">GitHub Token：<input class="input" id="syncToken" placeholder="填 GitHub 专用 Token（只给本仓库读写）" style="width:100%;margin-top:4px"></p>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <input class="input" id="syncCode" placeholder="输入同步码，例如 family2026" style="flex:1;min-width:140px">
+          <button class="btn btn-primary" id="btnSyncOn" style="min-width:88px">开启同步</button>
+          <button class="btn" id="btnSyncOff" style="display:none;min-width:88px">关闭</button>
+        </div>
+        <p class="sync-tip" id="syncStatus" style="margin-top:8px"></p>
       </div>
     </div>
   </div>
@@ -1220,6 +1227,11 @@ function drawPoems(taskId, level, dateStr, n){
   return out;
 }
 
+/* ---- 当天抽签结果"锁定"：存本地，当天复用（不受中途标记影响）；跨天自动重抽 ---- */
+function drawCacheKey(taskId, dateStr, level){ return 'study_poem_draw_'+taskId+'_'+dateStr+'_'+(level==='全部'||!level?'all':level); }
+function loadDraw(taskId, dateStr, level){ return load(drawCacheKey(taskId, dateStr, level), null); }
+function saveDraw(taskId, dateStr, level, titles){ save(drawCacheKey(taskId, dateStr, level), titles); }
+
 /* 某学段的背诵进度统计 */
 function poemProgress(taskId, level){
   const pool = POEMS.filter(p => !level || level==='全部' ? true : p.lvl===level);
@@ -1265,6 +1277,7 @@ function $(s){ return document.querySelector(s); }
 function load(key, def){ try{ const v=localStorage.getItem(key); return v?JSON.parse(v):def; }catch(e){ return def; } }
 function save(key, val){
   localStorage.setItem(key, JSON.stringify(val));
+  markSyncDirty(); // 本地有改动 → 触发云同步推送
 }
 
 /* 日期格式化：Date -> 'YYYY-MM-DD' */
@@ -1588,6 +1601,7 @@ function refillOne(taskId){
   const cand = due.length ? due : pool;
   const rnd = mulberry32(hashStr(poemCtx.dateStr+'|'+poemLevel+'|'+poemCtx.curList.length+'|refill'));
   poemCtx.curList.push(cand[Math.floor(rnd()*cand.length)]);
+  saveDraw(taskId, poemCtx.dateStr, poemLevel, poemCtx.curList.map(p=>p.t)); // 补抽结果一并锁定
 }
 // 更新抽签头部（日期 + 篇数 + 考前复习提示）
 function updatePoemHead(){
@@ -1647,7 +1661,7 @@ function renderList(){
       if(on){ poemCtx.doneSet[poemCtx.titles[idx]]=true; } else { delete poemCtx.doneSet[poemCtx.titles[idx]]; }
     });
   });
-  // “已掌握/免背”标签：标记后不再抽到。局部更新（按钮亮起 + 进度条刷新），不重绘抽签列表
+  // “已掌握/免背”标签：标记后不再抽到。标记时移出当日列表并补抽一首；取消只刷新进度
   $('#poemList').querySelectorAll('.master-one').forEach((btn,idx)=>{
     btn.addEventListener('click', ()=>{
       const title = poemCtx.titles[idx];
@@ -1655,8 +1669,18 @@ function renderList(){
       setMastered(task.id, title, on);
       btn.classList.toggle('active', on);
       btn.textContent = on ? '✨ 已掌握' : '🌟 已掌握';
-      toast(on ? `「${title}」已标记掌握，不再抽它 🎉` : `已取消「${title}」的掌握标记`);
-      renderPoemProgress();
+      if(on){
+        // 已掌握 → 移出当日列表并补抽一首（保持篇数，除非池子已空）
+        delete poemCtx.doneSet[title];
+        poemCtx.curList = poemCtx.curList.filter(p=>p.t!==title);
+        refillOne(task.id);
+        poemCtx.titles = poemCtx.curList.map(p=>p.t);
+        updatePoemHead(); renderPoemProgress(); renderList();
+        toast(`「${title}」已标记掌握，补抽一首 ✔`);
+      }else{
+        renderPoemProgress();
+        toast(`已取消「${title}」的掌握标记`);
+      }
     });
   });
   // 「跳过」：还没学到的诗跳过，立即移出列表并补抽一首（保持当日篇数）
@@ -1683,7 +1707,14 @@ function renderPoemDraw(){
     $('#poemList').innerHTML = `<div class="empty" style="padding:30px 10px"><div class="e">📚</div>请先选择背诵学段</div>`;
     return;
   }
-  poemCtx.curList = drawPoems(task.id, poemLevel, dateStr, poemN);
+  // 当天结果锁定：同一天复用已抽的（不受中途标记影响）；跨天自动重抽
+  const cached = loadDraw(task.id, dateStr, poemLevel);
+  if(cached && Array.isArray(cached)){
+    poemCtx.curList = cached.map(t=>POEMS.find(p=>p.t===t)).filter(Boolean);
+  }else{
+    poemCtx.curList = drawPoems(task.id, poemLevel, dateStr, poemN);
+    saveDraw(task.id, dateStr, poemLevel, poemCtx.curList.map(p=>p.t));
+  }
   poemCtx.titles = poemCtx.curList.map(p=>p.t);
   poemCtx.doneSet = {};
   updatePoemHead();
@@ -1763,6 +1794,7 @@ function renderPoemProgress(){
       const title = chip.dataset.t;
       toggleSkip(task.id, title, false);
       poemCtx.curList = drawPoems(task.id, poemLevel, poemCtx.dateStr, poemN);
+      saveDraw(task.id, poemCtx.dateStr, poemLevel, poemCtx.curList.map(p=>p.t));
       poemCtx.titles = poemCtx.curList.map(p=>p.t);
       const keep = {}; poemCtx.titles.forEach(t=>{ if(poemCtx.doneSet[t]) keep[t]=true; }); poemCtx.doneSet = keep;
       updatePoemHead(); renderPoemProgress(); renderList();
@@ -2282,7 +2314,182 @@ renderDateStrip();
 renderTodayTasks();
 renderWeek();
 
-/* ---------- 纯本地版：无云同步，数据仅存本设备浏览器 ---------- */
+/* ============================================================
+   CloudBase 云同步（JS SDK v2.17.3）
+   - 通过「同步码」区分用户：同码设备共享一份数据，异码各自独立
+   - 数据整包存云端 sync_data 集合（code=同步码, data=整包JSON, updated_at）
+   - 本地任何改动 → save() 防抖推送云端；启动+每30秒轮询拉取
+   ============================================================ */
+/* 用 GitHub 仓库作"云端数据库"：数据整包存到仓库文件 sync-data-<同步码>.json */
+const GH_OWNER = 'taciloquy';
+const GH_REPO  = 'study-workbench';
+const GH_API   = 'https://api.github.com';
+const LS_SYNC_CODE = 'study_sync_code';
+const LS_SYNC_MTIME = 'study_sync_mtime';
+let syncTimer = null, syncPullTimer = null;
+
+/* GitHub 专用 Token（用户填入，仅授权 study-workbench 仓库） */
+function getSyncToken(){ return (localStorage.getItem('study_sync_token')||'').trim(); }
+/* 就绪校验：有 token 才继续（失败会抛错，由调用方提示） */
+function cbReady(){
+  const t = getSyncToken();
+  if(!t) throw new Error('未填写 GitHub Token');
+  return Promise.resolve(t);
+}
+/* 同步码 → 云端文件名（只保留安全字符） */
+function syncPath(code){ return 'sync-data-'+(code||'').replace(/[^a-zA-Z0-9_-]/g,'_')+'.json'; }
+/* 读 GitHub 文件：返回 {data, sha}；文件不存在返回 {notFound:true} */
+async function ghGet(path, token){
+  const r = await fetch(GH_API+'/repos/'+GH_OWNER+'/'+GH_REPO+'/contents/'+encodeURIComponent(path)+'?ref=main',{
+    headers:{ 'Authorization':'token '+token, 'Accept':'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28' }
+  });
+  if(r.status===404) return { notFound:true };
+  if(!r.ok) throw new Error('GH_GET '+r.status);
+  const j = await r.json();
+  const txt = atob(j.content);
+  return { data: JSON.parse(txt), sha: j.sha };
+}
+/* 写 GitHub 文件（base64 处理中文；覆盖需带当前 sha） */
+async function ghPut(path, token, payload, sha){
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  const body = { message:'study-workbench sync update', content: content, branch:'main' };
+  if(sha) body.sha = sha;
+  const r = await fetch(GH_API+'/repos/'+GH_OWNER+'/'+GH_REPO+'/contents/'+encodeURIComponent(path),{
+    method:'PUT',
+    headers:{ 'Authorization':'token '+token, 'Accept':'application/vnd.github+json', 'Content-Type':'application/json', 'X-GitHub-Api-Version':'2022-11-28' },
+    body: JSON.stringify(body)
+  });
+  if(!r.ok) throw new Error('GH_PUT '+r.status);
+}
+
+function syncEnabled(){ return !!localStorage.getItem(LS_SYNC_CODE); }
+function getSyncCode(){ return (localStorage.getItem(LS_SYNC_CODE)||'').trim(); }
+
+/* 收集所有业务数据 → 整包对象（排除同步自身 key，避免循环） */
+function packAll(){
+  const o = {};
+  for(let i=0;i<localStorage.length;i++){
+    const k = localStorage.key(i);
+    if(k && k.indexOf('study_')===0 && k!==LS_SYNC_CODE && k!==LS_SYNC_MTIME && k!=='study_sync_token'){
+      try{ o[k] = JSON.parse(localStorage.getItem(k)); }catch(e){}
+    }
+  }
+  return o;
+}
+/* 把整包写回本地（仅业务 key，不触发 save 避免循环） */
+function applyAll(o){
+  Object.keys(o).forEach(k=>{
+    if(k.indexOf('study_')===0 && k!==LS_SYNC_CODE && k!==LS_SYNC_MTIME && k!=='study_sync_token')
+      localStorage.setItem(k, JSON.stringify(o[k]));
+  });
+  localStorage.setItem(LS_SYNC_MTIME, String(Date.now()));
+}
+function timeStr(t){ try{ const d=new Date(t); return `${d.getMonth()+1}月${d.getDate()}日 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }catch(e){ return t; } }
+
+/* 拉取云端：云端比本地新 → 覆盖本地并刷新页面 */
+async function pullSync(){
+  if(!syncEnabled()) return;
+  const code = getSyncCode();
+  let token;
+  try{ token = await cbReady(); }catch(e){ renderSyncStatus('⚠️ 请先在设置里填写 GitHub Token'); return; }
+  try{
+    const got = await ghGet(syncPath(code), token);
+    if(got.notFound){ renderSyncStatus('已连接云端，等待建立同步数据…'); return; }
+    const payload = got.data; // {updated_at, data}
+    const cloudM = new Date(payload.updated_at).getTime();
+    const localM = Number(localStorage.getItem(LS_SYNC_MTIME)||0);
+    if(cloudM > localM){
+      applyAll(payload.data || {});
+      renderSyncStatus(`已同步云端最新数据（${timeStr(payload.updated_at)}）`);
+      location.reload();
+    }else{
+      renderSyncStatus(`同步正常 · 云端 ${timeStr(payload.updated_at)}`);
+    }
+  }catch(e){ console.warn('pullSync 异常', e); renderSyncStatus('⚠️ 云端连接失败，请检查网络'); }
+}
+
+/* 推送整包到云端（GitHub 仓库里的文件，无文件则新建，有且本地更新才覆盖） */
+async function pushSync(){
+  if(!syncEnabled()) return;
+  const code = getSyncCode();
+  let token;
+  try{ token = await cbReady(); }catch(e){ return; }
+  const data = packAll();
+  const now = new Date().toISOString();
+  try{
+    const got = await ghGet(syncPath(code), token);
+    if(!got.notFound){
+      const cloudM = new Date(got.data.updated_at).getTime();
+      const localM = Number(localStorage.getItem(LS_SYNC_MTIME)||0);
+      if(localM <= cloudM) return; // 云端不旧于本地 → 不动
+      await ghPut(syncPath(code), token, {updated_at:now, data}, got.sha);
+    }else{
+      await ghPut(syncPath(code), token, {updated_at:now, data}, null);
+    }
+    localStorage.setItem(LS_SYNC_MTIME, String(Date.now()));
+  }catch(e){ console.warn('pushSync 异常', e); }
+}
+
+/* 数据变更后的防抖推送（由 save() 统一触发） */
+function markSyncDirty(){
+  if(!syncEnabled()) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(pushSync, 600);
+}
+
+/* 同步区 UI 状态 */
+function renderSyncUI(){
+  const on = syncEnabled();
+  const onBtn = $('#btnSyncOn'), offBtn = $('#btnSyncOff');
+  if(onBtn) onBtn.style.display = on ? 'none' : 'inline-flex';
+  if(offBtn) offBtn.style.display = on ? 'inline-flex' : 'none';
+  const code = getSyncCode();
+  const inp = $('#syncCode'); if(inp) inp.value = code;
+  const tk = $('#syncToken'); if(tk) tk.value = getSyncToken();
+  renderSyncStatus(on ? `🟢 同步已开启 · 码「${code}」` : '未开启：先填 GitHub Token 和同步码，再点「开启同步」即可在多设备间共享数据');
+}
+function renderSyncStatus(txt){ const el=$('#syncStatus'); if(el) el.textContent = txt||''; }
+
+/* 初始化同步：绑定 UI + 若已开启则连接云端并轮询 */
+function initSync(){
+  const onBtn = $('#btnSyncOn'), offBtn = $('#btnSyncOff');
+  if(!onBtn || !offBtn) return;
+  onBtn.addEventListener('click', ()=>{
+    const token = $('#syncToken').value.trim();
+    const code = $('#syncCode').value.trim();
+    if(!code){ toast('请先输入同步码'); return; }
+    if(!token){ toast('请先填写 GitHub Token'); return; }
+    localStorage.setItem('study_sync_token', token);
+    localStorage.setItem(LS_SYNC_CODE, code);
+    if(!localStorage.getItem(LS_SYNC_MTIME)) localStorage.setItem(LS_SYNC_MTIME, '0'); // 本地标记为"可能旧"，让云端优先
+    renderSyncUI();
+    toast('同步已开启，正在连接云端…');
+    (async()=>{
+      let tk;
+      try{ tk = await cbReady(); }catch(e){ renderSyncStatus('⚠️ 请先在设置里填写 GitHub Token'); return; }
+      try{
+        // 关键：先拉云端，云端有数据则以云端为准覆盖本地；云端无该码才用本地建立
+        const got = await ghGet(syncPath(code), tk);
+        if(!got.notFound){ applyAll(got.data.data||{}); renderSyncStatus('已同步云端数据'); location.reload(); return; }
+      }catch(e){}
+      await pushSync();   // 云端无该码 → 本地作为初始推上去
+      await pullSync();
+    })();
+  });
+  offBtn.addEventListener('click', ()=>{
+    localStorage.removeItem(LS_SYNC_CODE);
+    renderSyncUI();
+    toast('已关闭同步（本地数据保留）');
+  });
+  if(syncEnabled()){
+    renderSyncUI();
+    setTimeout(pullSync, 600);          // 启动时拉取一次
+    syncPullTimer = setInterval(pullSync, 30000); // 每 30 秒轮询云端
+  }else{
+    renderSyncUI();
+  }
+}
+initSync();
 
 </script>
 </body>
