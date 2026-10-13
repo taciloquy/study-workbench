@@ -1464,7 +1464,7 @@ function buildTaskCard(task, dateStr){
   const poemBtn = task.poem
     ? `<div style="margin-top:12px">
         ${prepLeft2!==null ? `<div class="prep-badge">📚 考前复习 · 距考试 ${prepLeft2} 天（抽已背过的回顾）</div>` : ''}
-        <button class="btn btn-sm btn-primary poem-btn" data-id="${task.id}">${prepLeft2!==null ? '📚 考前复习抽签（已背回顾）' : '📜 今日5首抽签背默'}</button>
+        <button class="btn btn-sm btn-primary poem-btn" data-id="${task.id}">${prepLeft2!==null ? '📚 考前复习抽签（已背回顾）' : '📜 今日古诗文背默'}</button>
       </div>`
     : '';
   const card = document.createElement('div');
