@@ -1586,6 +1586,7 @@ let poemN = Math.max(1, Math.min(10, parseInt(localStorage.getItem('study_poem_d
 $('#poemLevelSeg').addEventListener('click', e=>{
   const b = e.target.closest('.seg-item'); if(!b) return;
   poemLevel = b.dataset.level;
+  localStorage.setItem('study_poem_level', poemLevel); // 记住本次学段，下次打开默认沿用
   renderPoemLevelSeg();
   renderPoemDraw();
 });
@@ -1812,8 +1813,10 @@ function renderPoemProgress(){
 
 function openPoemDrawer(task, dateStr){
   poemCtx = { task, dateStr };
-  // 默认用任务预设学段；若无预设则让用户先选
-  poemLevel = (task.level && task.level!=='全部') ? task.level : '';
+  // 默认记忆上次打开的学段；第一次打开（无记录）退回任务预设，仍无预设则让用户先选
+  const savedLvl = localStorage.getItem('study_poem_level');
+  const preset = (task.level && task.level!=='全部') ? task.level : '';
+  poemLevel = savedLvl || preset || '';
   renderPoemLevelSeg();
   $('#poemNVal').textContent = poemN;
   renderPoemDraw();
@@ -1830,17 +1833,21 @@ function setPoemN(n){
 $('#poemNMinus').addEventListener('click', ()=> setPoemN(poemN-1));
 $('#poemNPlus').addEventListener('click', ()=> setPoemN(poemN+1));
 
-// 完成今日背默：把标记（或全部）诗词写入记忆并记 1 星
+// 完成今日背默：勾满「每日抽签篇数」才记 1 星并写入记忆；不足则提示、不记星不打卡
 $('#btnPoemDone').addEventListener('click', ()=>{
   if(!poemCtx) return;
   const marked = [...$('#poemList').querySelectorAll('.done-one')]
     .map((b,i)=> b.classList.contains('active') ? poemCtx.titles[i] : null)
     .filter(Boolean);
-  const titles = marked.length ? marked : poemCtx.titles;  // 一个都没标记 → 整批都算背过
-  commitRecite(poemCtx.task.id, poemCtx.dateStr, titles);
+  const need = poemN; // 每日抽签篇数（默认5）
+  if(marked.length < need){
+    toast(`还需勾选 ${need - marked.length} 首「已背默」才能完成今日背默（当前 ${marked.length}/${need}）`);
+    return; // 未达标：不记星、不打卡
+  }
+  commitRecite(poemCtx.task.id, poemCtx.dateStr, marked);
   setStar(poemCtx.task, poemCtx.dateStr, 1);
   $('#poemMask').classList.remove('show');
-  toast(`今日背默完成，记 1 星 · 已记录 ${titles.length} 首 🌟`);
+  toast(`今日背默完成，记 1 星 · 已记录 ${marked.length} 首 🌟`);
 });
 $('#poemClose').addEventListener('click', ()=>$('#poemMask').classList.remove('show'));
 $('#poemMask').addEventListener('click', e=>{ if(e.target.id==='poemMask') $('#poemMask').classList.remove('show'); });
