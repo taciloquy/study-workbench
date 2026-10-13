@@ -619,6 +619,13 @@ body{
      { 'YYYY-MM-DD': { taskId: star }, ... }
    study_reviews_base : 已保存的周复盘快照
    ============================================================ */
+/* 同步相关常量：必须置于脚本最顶部。若声明在初始化代码之后，首次加载（localStorage 无旧数据）时
+   seedAll→save→markSyncDirty→syncEnabled 会提前访问 const，触发"暂时性死区"崩溃导致整页空白。 */
+const GH_OWNER = 'taciloquy';
+const GH_REPO  = 'study-workbench';
+const GH_API   = 'https://api.github.com';
+const LS_SYNC_CODE = 'study_sync_code';
+const LS_SYNC_MTIME = 'study_sync_mtime';
 const LS_SUBJECTS = 'study_subjects_base';
 const LS_PLANS = 'study_plans_base';
 const LS_RECORDS = 'study_records_base';
@@ -2321,11 +2328,6 @@ renderWeek();
    - 本地任何改动 → save() 防抖推送云端；启动+每30秒轮询拉取
    ============================================================ */
 /* 用 GitHub 仓库作"云端数据库"：数据整包存到仓库文件 sync-data-<同步码>.json */
-const GH_OWNER = 'taciloquy';
-const GH_REPO  = 'study-workbench';
-const GH_API   = 'https://api.github.com';
-const LS_SYNC_CODE = 'study_sync_code';
-const LS_SYNC_MTIME = 'study_sync_mtime';
 let syncTimer = null, syncPullTimer = null;
 
 /* GitHub 专用 Token（用户填入，仅授权 study-workbench 仓库） */
