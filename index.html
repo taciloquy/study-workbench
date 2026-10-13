@@ -2346,7 +2346,9 @@ async function ghGet(path, token){
   if(r.status===404) return { notFound:true };
   if(!r.ok) throw new Error('GH_GET '+r.status);
   const j = await r.json();
-  const txt = atob(j.content);
+  const bin = atob(j.content);                                   // base64 → 逐字节(UTF-8 原始字节)
+  const bytes = Uint8Array.from(bin, c=>c.charCodeAt(0));        // 转成字节数组
+  const txt = new TextDecoder('utf-8').decode(bytes);            // 正确解码 UTF-8 → 中文不乱码
   return { data: JSON.parse(txt), sha: j.sha };
 }
 /* 写 GitHub 文件（base64 处理中文；覆盖需带当前 sha） */
