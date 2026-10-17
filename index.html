@@ -1371,10 +1371,11 @@ function poemLvlOf(mode){ return mode==='all'?null:(mode==='primary'?'小学':'�
 function poemCandidatePool(){ const st=poemLoadState(), set=new Set(poemUser.selectedSegments), lv=poemLvlOf(poemUser.rangeMode); return POEMS.filter(p=>(lv?p.lvl===lv:true)&&set.has(p.sem)&&!st[p.id]?.isSkipped&&!st[p.id]?.isMastered); }
 function poemShuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 function poemBuildTaskList(){
-  const now=Date.now(), pool=poemCandidatePool(), due=[], fresh=[];
-  pool.forEach(p=>{ const st=poemGetState(p.id); if(st.lastReciteAt&&poemIsDue(p.id,now)) due.push(p); else if(!st.lastReciteAt) fresh.push(p); });
-  poemShuffle(due); poemShuffle(fresh);
-  return due.concat(fresh).slice(0,poemN).map(p=>({articleId:p.id,isTempRecited:false,isHidden:false,reviewTag:poemReviewTag(p.id)}));
+  const now=Date.now(), pool=poemCandidatePool(), fresh=[], due=[], other=[];
+  pool.forEach(p=>{ const st=poemGetState(p.id); if(!st.lastReciteAt) fresh.push(p); else if(poemIsDue(p.id,now)) due.push(p); else other.push(p); });
+  poemShuffle(fresh); poemShuffle(due); poemShuffle(other);
+  // 保底新学：未背过的新篇目优先占当日名额，到期的复习篇目作为补充填充
+  return fresh.concat(due).concat(other).slice(0,poemN).map(p=>({articleId:p.id,isTempRecited:false,isHidden:false,reviewTag:poemReviewTag(p.id)}));
 }
 function poemEnsureDaily(){ let dt=load(K_POEM_DAILY,null); const today=fmt(new Date()); if(!dt||dt.taskDate!==today){ dt={taskDate:today,taskList:poemBuildTaskList()}; save(K_POEM_DAILY,dt); } return dt; }
 function poemSaveDaily(){ save(K_POEM_DAILY,poemDaily); }
@@ -1392,10 +1393,12 @@ function poemApplyRangeChange(){
     const inList=new Set(poemDaily.taskList.map(x=>x.articleId));
     let pool=POEMS.filter(p=>(lv?p.lvl===lv:true)&&set.has(p.sem)&&!st[p.id]?.isSkipped&&!st[p.id]?.isMastered&&!inList.has(p.id));
     const now=Date.now();
+    const fresh=pool.filter(p=>!poemGetState(p.id).lastReciteAt);
     const due=pool.filter(p=>poemGetState(p.id).lastReciteAt&&poemIsDue(p.id,now));
-    const rest=pool.filter(p=>!due.includes(p));
-    poemShuffle(due); poemShuffle(rest);
-    due.concat(rest).slice(0,need).forEach(p=>poemDaily.taskList.push({articleId:p.id,isTempRecited:false,isHidden:false,reviewTag:poemReviewTag(p.id)}));
+    const other=pool.filter(p=>poemGetState(p.id).lastReciteAt&&!poemIsDue(p.id,now));
+    poemShuffle(fresh); poemShuffle(due); poemShuffle(other);
+    // 保底新学：新篇目优先补入，到期复习作为补充
+    fresh.concat(due).concat(other).slice(0,need).forEach(p=>poemDaily.taskList.push({articleId:p.id,isTempRecited:false,isHidden:false,reviewTag:poemReviewTag(p.id)}));
   }
   poemSaveDaily();
 }
@@ -1405,8 +1408,10 @@ function poemRefillOne(){
   const pool=POEMS.filter(p=>(lv?p.lvl===lv:true)&&set.has(p.sem)&&!st[p.id]?.isSkipped&&!st[p.id]?.isMastered&&!inList.has(p.id));
   if(!pool.length) return null;
   const now=Date.now();
+  const fresh=pool.filter(p=>!poemGetState(p.id).lastReciteAt);
   const due=pool.filter(p=>poemGetState(p.id).lastReciteAt&&poemIsDue(p.id,now));
-  const cand=due.length?due:pool;
+  // 保底新学：补抽优先未背过的新篇目，其次到期复习
+  const cand=fresh.length?fresh:(due.length?due:pool);
   const p=cand[Math.floor(Math.random()*cand.length)];
   return {articleId:p.id,isTempRecited:false,isHidden:false,reviewTag:poemReviewTag(p.id)};
 }
