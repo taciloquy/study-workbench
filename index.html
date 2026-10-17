@@ -234,7 +234,7 @@ body{
 }
 .poem-text.metered{ text-align:center; line-height:2.1; }  /* 五/七言按句居中分行 */
 .poem-meta-line{ font-size:12px; color:var(--sub); font-weight:600; margin-bottom:6px; }
-.poem-text.hidden{ opacity:0; visibility:hidden; }  /* 遮住再默：原文与朝代·作者彻底隐藏（保留占位） */
+.poem-text.hidden{ display:none; }  /* 遮住再默：原文与朝代·作者彻底隐藏且不占位（回到仅显示篇目名的默认状态） */
 .poem-ctrl{ margin-top:10px; display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap; }
 .done-one.active{ border-color:var(--green); background:#EFFAF4; color:var(--green); }
 .master-one{ border-color:#D9D9D9; background:#F4F4F4; color:#9A9A9A; transition:.2s; }
@@ -652,6 +652,9 @@ const GH_OWNER = 'taciloquy';
 const GH_REPO  = 'study-workbench';
 const GH_API   = 'https://api.github.com';
 const LS_SYNC_CODE = 'study_sync_code';
+/* 固定、永不改名的本地配置 key（GitHub Token / 同步码）——纯本设备持久化，不以 study_ 开头故不进云同步包 */
+const LS_TOKEN_KEY = 'workbench__github_token';
+const LS_CODE_KEY  = 'workbench__sync_code';
 const LS_SYNC_MTIME = 'study_sync_mtime';
 const LS_SUBJECTS = 'study_subjects_base';
 const LS_PLANS = 'study_plans_base';
@@ -2393,7 +2396,11 @@ renderWeek();
 
 
 /* GitHub 专用 Token（用户填入，仅授权 study-workbench 仓库） */
-function getSyncToken(){ return (localStorage.getItem('study_sync_token')||'').trim(); }
+function getSyncToken(){
+  let v = localStorage.getItem(LS_TOKEN_KEY);
+  if(v===null){ const old = localStorage.getItem('study_sync_token'); if(old!==null){ v=old; localStorage.setItem(LS_TOKEN_KEY, old); } } // 迁移旧 key，绝不覆盖用户已有配置
+  return (v||'').trim();
+}
 /* 就绪校验：有 token 才继续（失败会抛错，由调用方提示） */
 function cbReady(){
   const t = getSyncToken();
@@ -2428,8 +2435,12 @@ async function ghPut(path, token, payload, sha){
   if(!r.ok) throw new Error('GH_PUT '+r.status);
 }
 
-function syncEnabled(){ return !!localStorage.getItem(LS_SYNC_CODE); }
-function getSyncCode(){ return (localStorage.getItem(LS_SYNC_CODE)||'').trim(); }
+function syncEnabled(){ return !!getSyncCode(); }
+function getSyncCode(){
+  let v = localStorage.getItem(LS_CODE_KEY);
+  if(v===null){ const old = localStorage.getItem(LS_SYNC_CODE); if(old!==null){ v=old; localStorage.setItem(LS_CODE_KEY, old); } } // 迁移旧 key，绝不覆盖用户已有配置
+  return (v||'').trim();
+}
 
 /* 收集所有业务数据 → 整包对象（排除同步自身 key，避免循环） */
 function packAll(){
@@ -2510,7 +2521,7 @@ function renderSyncUI(){
   if(onBtn) onBtn.style.display = on ? 'none' : 'inline-flex';
   if(offBtn) offBtn.style.display = on ? 'inline-flex' : 'none';
   const code = getSyncCode();
-  const inp = $('#syncCode'); if(inp) inp.value = code;
+  const inp = $('#syncCode'); if(inp) inp.value = code || '142857'; // 首次本地完全无任何存储时预填默认同步码（仅初始提示，用户可改）
   const tk = $('#syncToken'); if(tk) tk.value = getSyncToken();
   renderSyncStatus(on ? `🟢 同步已开启 · 码「${code}」` : '未开启：先填 GitHub Token 和同步码，再点「开启同步」即可在多设备间共享数据');
 }
@@ -2525,8 +2536,8 @@ function initSync(){
     const code = $('#syncCode').value.trim();
     if(!code){ toast('请先输入同步码'); return; }
     if(!token){ toast('请先填写 GitHub Token'); return; }
-    localStorage.setItem('study_sync_token', token);
-    localStorage.setItem(LS_SYNC_CODE, code);
+    localStorage.setItem(LS_TOKEN_KEY, token);
+    localStorage.setItem(LS_CODE_KEY, code);
     if(!localStorage.getItem(LS_SYNC_MTIME)) localStorage.setItem(LS_SYNC_MTIME, '0'); // 本地标记为"可能旧"，让云端优先
     renderSyncUI();
     toast('同步已开启，正在连接云端…');
@@ -2543,7 +2554,7 @@ function initSync(){
     })();
   });
   offBtn.addEventListener('click', ()=>{
-    localStorage.removeItem(LS_SYNC_CODE);
+    localStorage.removeItem(LS_CODE_KEY);
     renderSyncUI();
     toast('已关闭同步（本地数据保留）');
   });
