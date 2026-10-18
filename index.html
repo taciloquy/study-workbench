@@ -2554,6 +2554,8 @@ async function pushSync(){
 /* 数据变更后的防抖推送（由 save() 统一触发） */
 function markSyncDirty(){
   if(!syncEnabled()) return;
+  // 本地有新改动 → 立即把本地时间戳标为最新，确保 push 时能正确胜出上传（否则会被云端较新的时间戳判为"本地不新"而拒传）
+  localStorage.setItem(LS_SYNC_MTIME, String(Date.now()));
   clearTimeout(syncTimer);
   syncTimer = setTimeout(pushSync, 600);
 }
