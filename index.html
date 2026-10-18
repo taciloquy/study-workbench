@@ -606,9 +606,11 @@ body{
       </div>
     </div>
     <div class="poem-date" id="poemDate"></div>
+    <div class="poem-browse-bar"><button class="btn btn-soft btn-sm" id="btnBrowseAll">📚 全部篇目</button></div>
     <div class="poem-prog" id="poemProgress"></div>
     <div class="poem-curve" id="poemCurve"></div>
     <div id="poemList"></div>
+    <div id="poemAllList" style="display:none"></div>
     <!-- 底部管理入口：已掌握 / 已跳过（页面最底部、小字注释正上方） -->
     <div class="pp-master-head" id="masterHead" style="margin-top:12px;border-top:1px dashed var(--line);padding-top:8px"><span id="masterTitle">✨ 已掌握（0）</span><span class="arr">▼ 展开</span></div>
     <div class="pp-master-list" id="masterList" style="display:none"></div>
@@ -1847,9 +1849,43 @@ function renderDateLine(){
 }
 function renderPoemDraw(){ renderProgress(); renderList(); renderDateLine(); }
 
+// 浏览全部篇目（只读查看原文，不影响背默/标记）
+let browsingAll=false;
+function renderAllList(){
+  const set=new Set(poemUser.selectedSegments);
+  const lv=poemUser.rangeMode==='primary'?'小学':(poemUser.rangeMode==='middle'?'初中':null);
+  const list=POEMS.filter(p=>(lv?p.lvl===lv:true)&&set.has(p.sem));
+  $('#poemAllList').innerHTML=list.length
+    ? '<div class="pp-stats" style="margin:2px 0 8px">当前范围内共 <b>'+list.length+'</b> 篇（'+escapeHtml(poemUser.rangeMode)+' · '+poemUser.selectedSegments.length+' 个学期）</div>'
+      + list.map((p,i)=>'<div class="poem-card" data-id="'+p.id+'">'
+          +'<div class="poem-head"><span class="poem-num">'+(i+1)+'</span><span class="poem-title">'+escapeHtml(p.t)+'</span>'
+          +'<span class="poem-badges"><span class="poem-lvl">'+escapeHtml(p.lvl)+'</span><span class="poem-semt">'+escapeHtml(p.sem)+'</span></span></div>'
+          +'<div class="poem-text'+(isMetered(p)?' metered':'')+' hidden"><div class="poem-meta-line">'+escapeHtml(p.d+' · '+p.a)+'</div>'+poemLines(p)+'</div>'
+          +'<div class="poem-ctrl"><span class="poem-state">浏览</span>'
+          +'<button class="btn btn-sm btn-soft reveal">👀 查看全文</button></div></div>').join('')
+    : '<div class="empty" style="padding:20px;text-align:center">当前范围没有篇目，请调整学段/学期</div>';
+  $('#poemAllList').querySelectorAll('.poem-card').forEach(card=>{
+    const txt=card.querySelector('.poem-text'), rev=card.querySelector('.reveal');
+    rev.onclick=()=>{
+      const h=txt.classList.toggle('hidden');
+      rev.textContent=h?'👀 查看全文':'🙈 遮住再默';
+    };
+  });
+}
+function toggleBrowseAll(){
+  browsingAll=!browsingAll;
+  $('#poemAllList').style.display=browsingAll?'block':'none';
+  $('#poemList').style.display=browsingAll?'none':'block';
+  $('#btnBrowseAll').textContent=browsingAll?'← 返回当日任务':'📚 全部篇目';
+  if(browsingAll) renderAllList();
+}
+$('#btnBrowseAll').addEventListener('click', toggleBrowseAll);
+
+
 // 打开古诗文弹窗（全局库；task 仅用于「完成今日背默」打卡记星）
 function openPoemDrawer(task, dateStr){
   poemCtx = { task, dateStr };
+  if(browsingAll){ browsingAll=false; $('#poemAllList').style.display='none'; $('#poemList').style.display='block'; $('#btnBrowseAll').textContent='📚 全部篇目'; }
   renderSemUI();
   renderProgress();
   renderList();
@@ -1875,6 +1911,7 @@ $('#levelSeg').addEventListener('click', e=>{
   poemSaveUser(poemUser);
   poemApplyRangeChange();
   renderSemUI(); renderProgress(); renderList(); renderDateLine();
+  if(browsingAll) renderAllList();
 });
 // 学期多选
 $('#btnSem').addEventListener('click', ()=>{
@@ -1889,6 +1926,7 @@ $('#semOk').addEventListener('click', ()=>{
   if(!chosen.length){ toast('请至少勾选一个学期'); return; }
   poemUser.selectedSegments=chosen; poemSaveUser(poemUser); poemApplyRangeChange();
   renderSemUI(); renderProgress(); renderList(); renderDateLine();
+  if(browsingAll) renderAllList();
   $('#semOverlay').classList.remove('show');
   toast('学期范围已更新（永久标记与复习时间不受影响）');
 });
