@@ -1380,8 +1380,9 @@ function poemBuildTaskList(){
   // 保底新学：未背过的新篇目优先占当日名额，到期的复习篇目作为补充填充
   return fresh.concat(due).concat(other).slice(0,poemN).map(p=>({articleId:p.id,isTempRecited:false,isHidden:false,reviewTag:poemReviewTag(p.id)}));
 }
-function poemEnsureDaily(){ let dt=load(K_POEM_DAILY,null); const today=fmt(new Date()); if(!dt||dt.taskDate!==today){ dt={taskDate:today,taskList:poemBuildTaskList()}; save(K_POEM_DAILY,dt); } return dt; }
-function poemSaveDaily(){ save(K_POEM_DAILY,poemDaily); }
+let pendingLocalDaily=false; // 启动时本地临时生成的当日任务，待首次 pullSync 裁决后再决定是否提交
+function poemEnsureDaily(){ let dt=load(K_POEM_DAILY,null); const today=fmt(new Date()); if(dt&&dt.taskDate===today) return dt; dt={taskDate:today,taskList:poemBuildTaskList()}; if(syncEnabled()){ pendingLocalDaily=true; /* 同步已开启：先不写库，等 pullSync 裁决——云端有今天任务就用云端的，没有再提交本地 */ } else { save(K_POEM_DAILY,dt); } return dt; }
+function poemSaveDaily(){ pendingLocalDaily=false; save(K_POEM_DAILY,poemDaily); }
 /* 迁移旧数据（须在 poemUser / poemDaily 初始化前） */
 poemMigrateLegacy();
 let poemUser=poemLoadUser();
@@ -1885,6 +1886,8 @@ $('#btnBrowseAll').addEventListener('click', toggleBrowseAll);
 // 打开古诗文弹窗（全局库；task 仅用于「完成今日背默」打卡记星）
 function openPoemDrawer(task, dateStr){
   poemCtx = { task, dateStr };
+  // 记录恢复点：同步/reload 后自动回到古诗文弹窗
+  try{ sessionStorage.setItem('wb_poem_resume','1'); sessionStorage.setItem('wb_poem_task_id',task.id||'poem'); sessionStorage.setItem('wb_poem_task_name',task.name||'古诗文背默'); sessionStorage.setItem('wb_poem_date',dateStr||''); }catch(e){}
   if(browsingAll){ browsingAll=false; $('#poemAllList').style.display='none'; $('#poemList').style.display='block'; $('#btnBrowseAll').textContent='📚 全部篇目'; }
   renderSemUI();
   renderProgress();
@@ -1893,6 +1896,7 @@ function openPoemDrawer(task, dateStr){
   $('#poemNVal').textContent = poemN;
   $('#poemMask').classList.add('show');
 }
+function clearPoemResume(){ try{ sessionStorage.removeItem('wb_poem_resume'); }catch(e){} }
 // 每日抽签数量步进器（1-20）
 function setPoemN(n){
   poemN = Math.max(1, Math.min(20, n));
@@ -1950,8 +1954,8 @@ $('#btnPoemDone').addEventListener('click', ()=>{
   $('#poemMask').classList.remove('show');
   toast(`今日背默完成，记 1 星 · 已记录 ${marked.length} 首 🌟`);
 });
-$('#poemClose').addEventListener('click', ()=>$('#poemMask').classList.remove('show'));
-$('#poemMask').addEventListener('click', e=>{ if(e.target.id==='poemMask') $('#poemMask').classList.remove('show'); });
+$('#poemClose').addEventListener('click', ()=>{ $('#poemMask').classList.remove('show'); clearPoemResume(); });
+$('#poemMask').addEventListener('click', e=>{ if(e.target.id==='poemMask'){ $('#poemMask').classList.remove('show'); clearPoemResume(); } });
 
 
 /* ============================================================
@@ -2515,15 +2519,18 @@ async function pullSync(){
   try{ token = await cbReady(); }catch(e){ renderSyncStatus('⚠️ 请先在设置里填写 GitHub Token'); return; }
   try{
     const got = await ghGet(syncPath(code), token);
-    if(got.notFound){ renderSyncStatus('已连接云端，等待建立同步数据…'); return; }
+    if(got.notFound){ if(pendingLocalDaily){ pendingLocalDaily=false; poemSaveDaily(); } renderSyncStatus('已连接云端，等待建立同步数据…'); return; }
     const payload = got.data; // {updated_at, data}
     const cloudM = new Date(payload.updated_at).getTime();
     const localM = Number(localStorage.getItem(LS_SYNC_MTIME)||0);
     if(cloudM > localM){
       applyAll(payload.data || {});
+      pendingLocalDaily=false; // 云端已覆盖当日任务，本地临时那份作废
       renderSyncStatus(`已同步云端最新数据（${timeStr(payload.updated_at)}）`);
       location.reload();
     }else{
+      // 云端不比本地新：若本地有启动时临时生成、尚未提交的当日任务，正式提交并推送
+      if(pendingLocalDaily){ pendingLocalDaily=false; poemSaveDaily(); }
       renderSyncStatus(`同步正常 · 云端 ${timeStr(payload.updated_at)}`);
     }
   }catch(e){ console.warn('pullSync 异常', e); renderSyncStatus('⚠️ 云端连接失败，请检查网络'); }
@@ -2613,6 +2620,16 @@ function initSync(){
   }
 }
 initSync();
+/* reload 后恢复古诗文弹窗（同步/版本更新重载时保持在背默页，不回首页） */
+try{
+  if(sessionStorage.getItem('wb_poem_resume')==='1'){
+    sessionStorage.removeItem('wb_poem_resume');
+    const tid=sessionStorage.getItem('wb_poem_task_id')||'poem';
+    const tname=sessionStorage.getItem('wb_poem_task_name')||'古诗文背默';
+    const tdate=sessionStorage.getItem('wb_poem_date')||fmt(new Date());
+    openPoemDrawer({id:tid,name:tname}, tdate);
+  }
+}catch(e){}
 
 </script>
 </body>
