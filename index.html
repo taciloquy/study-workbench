@@ -1480,6 +1480,7 @@ function migrateTask(task){
 }
 
 /* 首次运行注入默认课程 + 示例任务 */
+let pendingLocalSeed=false; // 本地 seedAll 的临时数据，同步开启时先不写库，待 pullSync 裁决
 function seedAll(){
   subjects = DEFAULT_SUBJECTS.map(s=>({...s}));
   const byName = {}; subjects.forEach(s=>byName[s.name]=s.id);
@@ -1489,7 +1490,8 @@ function seedAll(){
     { id:uid(), name:'语文古诗文复习', subjectId:byName['语文'], type:'daily', poem:true, level:'全部' },
   ];
   plans.forEach(migrateTask);
-  persistSubjects(); persistPlans();
+  if(syncEnabled()){ pendingLocalSeed=true; /* 同步开启：先不写库，等 pullSync 裁决——云端有就用云端的，没有再提交本地默认 */ }
+  else { persistSubjects(); persistPlans(); }
 }
 if(!subjects || !subjects.length){ seedAll(); }
 if(!plans || !plans.length){ seedAll(); }
@@ -2519,18 +2521,24 @@ async function pullSync(){
   try{ token = await cbReady(); }catch(e){ renderSyncStatus('⚠️ 请先在设置里填写 GitHub Token'); return; }
   try{
     const got = await ghGet(syncPath(code), token);
-    if(got.notFound){ if(pendingLocalDaily){ pendingLocalDaily=false; poemSaveDaily(); } renderSyncStatus('已连接云端，等待建立同步数据…'); return; }
+    if(got.notFound){
+      if(pendingLocalDaily){ pendingLocalDaily=false; poemSaveDaily(); }
+      if(pendingLocalSeed){ pendingLocalSeed=false; persistSubjects(); persistPlans(); }
+      renderSyncStatus('已连接云端，等待建立同步数据…'); return;
+    }
     const payload = got.data; // {updated_at, data}
     const cloudM = new Date(payload.updated_at).getTime();
     const localM = Number(localStorage.getItem(LS_SYNC_MTIME)||0);
     if(cloudM > localM){
       applyAll(payload.data || {});
       pendingLocalDaily=false; // 云端已覆盖当日任务，本地临时那份作废
+      pendingLocalSeed=false;  // 云端有课程/任务数据，本地 seedAll 临时数据作废
       renderSyncStatus(`已同步云端最新数据（${timeStr(payload.updated_at)}）`);
       location.reload();
     }else{
-      // 云端不比本地新：若本地有启动时临时生成、尚未提交的当日任务，正式提交并推送
+      // 云端不比本地新：若本地有启动时临时生成、尚未提交的数据，正式提交并推送
       if(pendingLocalDaily){ pendingLocalDaily=false; poemSaveDaily(); }
+      if(pendingLocalSeed){ pendingLocalSeed=false; persistSubjects(); persistPlans(); }
       renderSyncStatus(`同步正常 · 云端 ${timeStr(payload.updated_at)}`);
     }
   }catch(e){ console.warn('pullSync 异常', e); renderSyncStatus('⚠️ 云端连接失败，请检查网络'); }
