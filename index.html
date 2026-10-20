@@ -2536,7 +2536,28 @@ async function pullSync(){
       renderSyncStatus(`已同步云端最新数据（${timeStr(payload.updated_at)}）`);
       location.reload();
     }else{
-      // 云端不比本地新：若本地有启动时临时生成、尚未提交的数据，正式提交并推送
+      // 云端不比本地新。但本地可能有启动时临时生成、尚未提交的数据。
+      // 关键：临时数据不能无脑提交——先检查云端是否已有对应数据，有就用云端的，避免本地临时数据覆盖云端真实数据。
+      const cloudData = payload.data || {};
+      const cloudDaily = cloudData[K_POEM_DAILY];
+      if(pendingLocalDaily && cloudDaily && cloudDaily.taskDate === fmt(new Date())){
+        // 云端已有今天的任务清单 → 用云端的，本地临时那份作废，不提交不 push
+        applyAll(cloudData);
+        pendingLocalDaily=false;
+        pendingLocalSeed=false;
+        renderSyncStatus(`已同步云端当日任务（${timeStr(payload.updated_at)}）`);
+        location.reload();
+        return;
+      }
+      if(pendingLocalSeed && cloudData[LS_PLANS]){
+        // 云端已有课程/任务列表 → 用云端的，本地 seedAll 临时数据作废
+        applyAll(cloudData);
+        pendingLocalSeed=false;
+        renderSyncStatus(`已同步云端课程列表（${timeStr(payload.updated_at)}）`);
+        location.reload();
+        return;
+      }
+      // 云端没有对应数据 → 才正式提交本地临时数据
       if(pendingLocalDaily){ pendingLocalDaily=false; poemSaveDaily(); }
       if(pendingLocalSeed){ pendingLocalSeed=false; persistSubjects(); persistPlans(); }
       renderSyncStatus(`同步正常 · 云端 ${timeStr(payload.updated_at)}`);
